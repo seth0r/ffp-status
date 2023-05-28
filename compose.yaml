@@ -1,0 +1,81 @@
+version: "3"
+services:
+  xmlcollect-receiver:
+    container_name: ffp-xmlcollect-receiver
+    build: xmlcollect-receiver
+    restart: unless-stopped
+    mem_limit: "2g"
+    volumes:
+      - ./tmpstor/:/tmpstor/
+    env_file:
+      - ./db.env
+      - ./common.env
+    environment:
+      - TMPSTOR=/tmpstor/
+      - PORT=17485
+      - RECVTHREADS=128
+    networks:
+      ffp:
+        ipv6_address: 2a03:4000:5e:f7f:ff::444d
+
+  cherry-status:
+    container_name: ffp-status-cherry
+    build: cherry-status
+    restart: unless-stopped
+    mem_limit: "1g"
+    env_file:
+      - ./db.env
+      - ./common.env
+    networks:
+      ffp:
+        ipv6_address: 2a03:4000:5e:f7f:ff::1f40
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:8000/cherry-health-check || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    command: gunicorn -w 4 -t 60 -b '[::]:8000' app
+
+  grafana:
+    container_name: ffp-grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    mem_limit: "512m"
+    volumes:
+      - ./grafana:/var/lib/grafana
+    env_file:
+      - ./grafana.env
+    user: "1000"
+    networks:
+      ffp:
+
+  nginx:
+    container_name: ffp-status-nginx
+    build: nginx
+    restart: unless-stopped
+    mem_limit: "256m"
+    ports:
+      - 10.0.3.1:80:80
+    volumes:
+      - ./nginx/default.conf:/tmp/default.conf:ro
+      - ./static/:/static/:ro
+      - ./htdocs/:/htdocs/:ro
+    environment: 
+      - CHERRY_SERVER_ADDR=cherry-status:8000
+    networks:
+      ffp:
+        ipv6_address: 2a03:4000:5e:f7f:ff::50
+    depends_on:
+      - cherry-status
+      - grafana
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:80/health-check || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    command: /app/start.sh
+
+networks:
+  ffp:
+    name: ffp
+    external: true

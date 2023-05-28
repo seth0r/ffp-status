@@ -1,0 +1,24 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+#popup {
+}
+#infobox {
+}
+.popover b {
+    white-space: nowrap;
+    vertical-align: top;
+    padding: 5px;
+}
+.popover {
+    max-width: none;
+}

@@ -127,3 +127,10 @@ map.on('pointermove', function (evt) {
         $('#popup').popover('dispose');
     }
 });
+
+window.setInterval(function () {
+    for ( layer of map.getAllLayers()) {
+        layer_nodes.getSource().refresh();
+        layer_links.getSource().refresh();
+    }
+}, 60000);

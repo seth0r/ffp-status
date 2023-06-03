@@ -10,10 +10,8 @@ body {
   bottom: 0;
   width: 100%;
 }
-#popup {
-}
-#infobox {
-}
+#popup {}
+#infobox {}
 .popover b {
     white-space: nowrap;
     vertical-align: top;

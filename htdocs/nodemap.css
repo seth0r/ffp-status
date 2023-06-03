@@ -78,3 +78,6 @@ body {
 .linkinfo .link .lastseen {
     font-style: italic;
 }
+.jsClock {}
+.jsClock .now {display:none}
+.jsClock .start {display:none}

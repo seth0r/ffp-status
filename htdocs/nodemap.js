@@ -1,18 +1,29 @@
+const layer_links = new ol.layer.Vector({
+    title: 'Links',
+    source: new ol.source.Vector({
+        projection : 'EPSG:3857',
+        format: new ol.format.GeoJSON(),
+        url: '/links.geojson',
+    }),
+    style: style_link,
+});
+const layer_nodes = new ol.layer.Vector({
+    title: 'Nodes',
+    source: new ol.source.Vector({
+        projection : 'EPSG:3857',
+        format: new ol.format.GeoJSON(),
+        url: '/nodes.geojson',
+    }),
+    style: style_node,
+});
 const map = new ol.Map({
     target: 'map',
     layers: [
         new ol.layer.Tile({
             source: new ol.source.OSM(),
         }),
-        new ol.layer.Vector({
-            title: 'Nodes',
-            source: new ol.source.Vector({
-                projection : 'EPSG:3857',
-                format: new ol.format.GeoJSON(),
-                url: '/nodes.geojson',
-            }),
-            style: style_node,
-        }),
+        layer_links,
+        layer_nodes,
     ],
     view: new ol.View({
         center: ol.proj.fromLonLat([13.0642644, 52.3948361]),

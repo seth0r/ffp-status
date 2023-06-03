@@ -32,6 +32,38 @@ const map = new ol.Map({
     }),
 });
 
+window.addEventListener('hashchange', function () {
+    update_map();
+});
+
+function get_url_params() {
+    var url_hash = window.location.hash.substr(1);
+    var url_params = url_hash.split('&').reduce(function (res, item) {
+        var parts = item.split('=');
+        res[parts[0]] = parts[1];
+        return res;
+    }, {});
+    return url_params;
+}
+
+function update_map() {
+    var url_params = get_url_params();
+    var zoom = parseFloat(url_params.zoom);
+    if (!Number.isNaN(zoom)) {
+        map.getView().setZoom(zoom);
+    }
+    var lat = parseFloat(url_params.lat);
+    var lon = parseFloat(url_params.lon);
+    if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+        map.getView().setCenter( ol.proj.fromLonLat([url_params.lon,url_params.lat]) );
+    }
+}
+update_map();
+map.on('moveend', function(evt){
+    var c = ol.proj.toLonLat(map.getView().getCenter());
+    window.location.hash = '#zoom=' + map.getView().getZoom().toFixed(3) + '&lon=' + c[0].toFixed(6) + '&lat=' + c[1].toFixed(6)
+});
+
 const infobox = new ol.Overlay({
     element: document.getElementById('infobox'),
     positioning: 'bottom-center',

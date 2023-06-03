@@ -5,6 +5,13 @@ const node_colors = {
     grey  : [  55,  55, 55, 0.5 ],
 }
 
+const link_colors = [
+    [ 0.0, 187,  51,  51, 0.4 ],
+    [ 0.3, 255, 102,   0, 0.8 ],
+    [ 0.6, 255, 204,   0, 0.8 ],
+    [ 1.0,   0, 204,   0, 0.8 ],
+]
+
 function icolor( value, colors ){
     if (value <= colors[0][0]) {
         return colors[0].slice(1);
@@ -40,3 +47,15 @@ function style_node(feature,resolution) {
     return new ol.style.Style({ image: img });
 };
 
+function style_link(feature,resolution) {
+    var props = feature.getProperties();
+    var color = icolor( props['tq'], link_colors );
+    color[3] *= 1 - Math.max( 0, Math.min( props['seen'] / (24*60*60), 1 ));
+    var style = new ol.style.Style({
+        stroke: new ol.style.Stroke({
+            color: color,
+            width: Math.max(1,Math.min(4/resolution,3)),
+        })
+    });
+    return style;
+};

@@ -76,10 +76,12 @@ const infobox = new ol.Overlay({
 });
 map.addOverlay(infobox);
 
+var last_id = null;
 map.on('click', function(evt) {
     var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
     if (feature) {
         var c = feature.get("info");
+        last_id = [feature.get("type"),feature.get("id")];
         if (c) {
             $('#infobox').popover('dispose');
             $('#infobox').popover({
@@ -96,7 +98,31 @@ map.on('click', function(evt) {
             $('#infobox').popover('show');
         }
     } else {
+        last_id = null;
         $('#infobox').popover('dispose');
+    }
+});
+function update_infobox( features ) {
+    for (f of features) {
+        if (last_id[1] == f.get("id")) {
+            var c = f.get("info");
+            if (c) {
+                $('#'+last_id[1]).replaceWith(c);
+            }
+            return;
+        }
+    }
+    last_id = null;
+    $('#infobox').popover('dispose');
+}
+layer_nodes.getSource().on('featuresloadend', function( evt ) {
+    if (last_id && last_id[0] == "node") {
+        update_infobox( evt.features );
+    }
+});
+layer_links.getSource().on('featuresloadend', function( evt ) {
+    if (last_id && last_id[0] == "link") {
+        update_infobox( evt.features );
     }
 });
 

@@ -28,7 +28,6 @@ services:
       - ./common.env
     networks:
       ffp:
-        ipv6_address: 2a03:4000:5e:f7f:ff::1f40
     healthcheck:
       test: ["CMD-SHELL", "curl --silent --fail localhost:8000/cherry-health-check || exit 1"]
       interval: 10s

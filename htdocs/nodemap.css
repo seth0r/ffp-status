@@ -20,3 +20,61 @@ body {
 .popover {
     max-width: none;
 }
+.linkinfo {
+    min-width: 40em;
+    /*white-space: nowrap;*/
+    flex-wrap: nowrap;
+    text-align: center;
+}
+.linkinfo .header {}
+.linkinfo .header .tq {
+    font-size: xx-large;
+    font-weight: bold;
+}
+.linkinfo .header .grafanalink {
+    text-align: right;
+    font-size: xx-large;
+}
+.linkinfo .subheader {
+    border-bottom: 1px solid;
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+.linkinfo .subheader .hostname {
+    font-size: large;
+    font-weight: bold;
+}
+.linkinfo .subheader .length {
+    font-size: larger;
+    margin: auto;
+}
+.linkinfo .link {
+    flex-wrap: nowrap;
+}
+.linkinfo .link div {
+    margin-top: .5em;
+    margin-bottom: .5em;
+    font-size: larger;
+}
+.linkinfo .link .kind_other {}
+.linkinfo .link .kind_wireless {}
+.linkinfo .link .symbol_other {
+    background-image: url( "/static/other.svg" );
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+.linkinfo .link .symbol_wireless {
+    background-image: url( "/static/wireless.svg" );
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+.linkinfo .link .best {}
+.linkinfo .link .tq {
+    font-weight: bold;
+}
+.linkinfo .link .snr {}
+.linkinfo .link .lastseen {
+    font-style: italic;
+}

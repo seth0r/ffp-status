@@ -78,11 +78,15 @@ map.addOverlay(infobox);
 
 var last_id = null;
 map.on('click', function(evt) {
-    var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
-    if (evt.originalEvent.ctrlKey) {
-        last_id = null;
+    var features;
+    for (var i=0;i<20;i++) {
+        features = map.getFeaturesAtPixel(evt.pixel, {hitTolerance: i});
+        if (features.length > 0) break;
+    }
+    if (evt.originalEvent.ctrlKey || (features.length == 0 && last_id == null)) {
+        last_id = "";
         var lonlat = ol.proj.toLonLat(evt.coordinate);
-        var c = "<b>" + lonlat[0].toFixed(6) + " : " + lonlat[1].toFixed(6) + "</b>";
+        var c = "<b>" + lonlat[0].toFixed(6) + " ; " + lonlat[1].toFixed(6) + "</b>";
         $('#infobox').popover('dispose');
         $('#infobox').popover({
             'placement': 'bottom',
@@ -92,9 +96,9 @@ map.on('click', function(evt) {
         });
         infobox.setPosition(evt.coordinate);
         $('#infobox').popover('show');
-    } else if (feature) {
-        var c = feature.get("info");
-        last_id = [feature.get("type"),feature.get("id")];
+    } else if (features.length > 0) {
+        var c = features[0].get("info");
+        last_id = [features[0].get("type"),features[0].get("id")];
         if (c) {
             $('#infobox').popover('dispose');
             $('#infobox').popover({
@@ -103,8 +107,8 @@ map.on('click', function(evt) {
                 'content': c,
                 'animation': false,
             });
-            if (feature.getGeometry().getType() == "Point") {
-                infobox.setPosition(feature.getGeometry().getCoordinates());
+            if (features[0].getGeometry().getType() == "Point") {
+                infobox.setPosition(features[0].getGeometry().getCoordinates());
             } else {
                 infobox.setPosition(evt.coordinate);
             }
@@ -148,9 +152,9 @@ const popup = new ol.Overlay({
 map.addOverlay(popup);
 
 map.on('pointermove', function (evt) {
-    var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
-    if (feature) {
-        var c = feature.get("popup");
+    var features = map.getFeaturesAtPixel(evt.pixel, {hitTolerance: 1});
+    if (features.length > 0) {
+        var c = features[0].get("popup");
         if (c) {
             $('#popup').popover('dispose');
             $('#popup').popover({
@@ -159,7 +163,7 @@ map.on('pointermove', function (evt) {
                 'content': c,
                 'animation': false,
             });
-            popup.setPosition(feature.getGeometry().getCoordinates());
+            popup.setPosition(features[0].getGeometry().getCoordinates());
             $('#popup').popover('show');
         }
     } else {

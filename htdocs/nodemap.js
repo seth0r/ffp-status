@@ -79,7 +79,20 @@ map.addOverlay(infobox);
 var last_id = null;
 map.on('click', function(evt) {
     var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
-    if (feature) {
+    if (evt.originalEvent.ctrlKey) {
+        last_id = null;
+        var lonlat = ol.proj.toLonLat(evt.coordinate);
+        var c = "<b>" + lonlat[0].toFixed(6) + " : " + lonlat[1].toFixed(6) + "</b>";
+        $('#infobox').popover('dispose');
+        $('#infobox').popover({
+            'placement': 'bottom',
+            'html': true,
+            'content': c,
+            'animation': false,
+        });
+        infobox.setPosition(evt.coordinate);
+        $('#infobox').popover('show');
+    } else if (feature) {
         var c = feature.get("info");
         last_id = [feature.get("type"),feature.get("id")];
         if (c) {

@@ -3,4 +3,5 @@ cherry-status/
 tmpstor/
 grafana/
 grafana.env
+swag/
 db.env

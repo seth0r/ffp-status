@@ -48,19 +48,24 @@ services:
     networks:
       ffp:
 
-  nginx:
-    container_name: ffp-status-nginx
-    build: nginx
+  swag:
+    container_name: ffp-status-swag
+    image: seth0r/letsencrypt
     restart: unless-stopped
     mem_limit: "256m"
     ports:
       - 10.0.3.1:80:80
+      - 10.0.3.1:443:443
     volumes:
-      - ./nginx/default.conf:/tmp/default.conf:ro
+      - ./swag/:/config/:rw
+      - ./nginx-status.conf:/config/nginx/site-confs/default.conf:ro
       - ./static/:/static/:ro
       - ./htdocs/:/htdocs/:ro
     environment: 
-      - CHERRY_SERVER_ADDR=cherry-status:8000
+      - EMAIL=postmaster@freifunk-potsdam.de
+      - ONLY_SUBDOMAINS=true
+      - URL=freifunk-potsdam.de
+      - SUBDOMAINS=status
     networks:
       ffp:
         ipv6_address: 2a03:4000:5e:f7f:ff::50
@@ -72,7 +77,6 @@ services:
       interval: 10s
       timeout: 10s
       retries: 3
-    command: /app/start.sh
 
 networks:
   ffp:

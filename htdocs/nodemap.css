@@ -81,3 +81,4 @@ body {
 .jsClock {}
 .jsClock .now {display:none}
 .jsClock .start {display:none}
+.jsClock .res {display:none}

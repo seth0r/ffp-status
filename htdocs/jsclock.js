@@ -3,7 +3,8 @@ function jsClock() {
     $('.jsClock').each(function(i,obj) {
         var now = parseInt( $(obj).find('.now').html() );
         var start = parseInt( $(obj).find('.start').html() );
-        var s = Math.floor( current - now + start );
+        var res = parseInt( $(obj).find('.res').html() );
+        var s = Math.floor( (current - now + start) / res ) * res;
         var d = Math.floor(s / (24 * 60 * 60));
         s = s % (24 * 60 * 60);
         var h = Math.floor(s / (60 * 60));
@@ -15,7 +16,11 @@ function jsClock() {
         if ( h > 0 ) { l.push( h + "h"); }
         if ( m > 0 ) { l.push( m + "m"); }
         if ( s > 0 ) { l.push( s + "s"); }
-        $(this).find('.value').html( l.join(" ") );
+        if (l.length === 0) {
+            $(this).find('.value').html( "0s" );
+        } else {
+            $(this).find('.value').html( l.join(" ") );
+        }
     });
 }
 setInterval( jsClock, 1000 );

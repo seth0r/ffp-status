@@ -58,8 +58,8 @@ body {
 }
 .linkinfo .link .kind_other {}
 .linkinfo .link .kind_wireless {}
-.linkinfo .link .symbol_other {
-    background-image: url( "/static/other.svg" );
+.linkinfo .link .symbol_wired {
+    background-image: url( "/static/wired.svg" );
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;

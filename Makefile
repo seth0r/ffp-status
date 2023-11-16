@@ -8,11 +8,11 @@ help:
 restart: stop start
 .PHONY: restart
 
-start: grafana xmlcollect-receiver
+start: grafana xmlcollect-receiver cherry-status messagesender
 	docker compose up -d --build
 .PHONY: start
 
-stop: xmlcollect-receiver
+stop:
 	docker compose down --remove-orphans
 .PHONY: stop
 
@@ -23,7 +23,11 @@ update: update_xmlcollect-receiver
 
 update_xmlcollect-receiver: xmlcollect-receiver
 	cd "$<"; make update; cd ..
-.PHONY: update_xmlcr
+.PHONY: update_xmlcollect-receiver
+
+update_messagesender: messagesender
+	cd "$<"; make update; cd ..
+.PHONY: update_messagesender
 
 grafana:
 	mkdir "$@"
@@ -35,4 +39,8 @@ xmlcollect-receiver:
 
 cherry-status:
 	git clone https://github.com/seth0r/ffp-cherry-status.git "$@"
+	cd "$@"; make init; cd ..
+
+messagesender:
+	git clone https://github.com/seth0r/ffp-messagesender.git "$@"
 	cd "$@"; make init; cd ..

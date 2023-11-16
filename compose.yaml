@@ -35,6 +35,18 @@ services:
       retries: 3
     command: gunicorn -w 4 -t 60 -b '[::]:8000' app
 
+  messagesender:
+    container_name: ffp-messagesender
+    build: messagesender
+    restart: unless-stopped
+    mem_limit: "1g"
+    env_file:
+      - ./db.env
+      - ./msgcfg.env
+      - ./common.env
+    networks:
+      ffp:
+
   grafana:
     container_name: ffp-grafana
     image: grafana/grafana:latest

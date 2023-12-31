@@ -65,9 +65,6 @@ services:
     image: seth0r/letsencrypt
     restart: unless-stopped
     mem_limit: "256m"
-    ports:
-      - 10.0.3.1:80:80
-      - 10.0.3.1:443:443
     volumes:
       - ./swag/:/config/:rw
       - ./nginx-status.conf:/config/nginx/site-confs/default.conf:ro

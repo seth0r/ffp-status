@@ -16,7 +16,7 @@ services:
       - RECVTHREADS=128
     networks:
       ffp:
-        ipv6_address: 2a03:4000:5e:f7f:ff::444d
+        ipv6_address: 2a03:4000:3b:e5:ff::444d
 
   cherry-status:
     container_name: ffp-status-cherry
@@ -77,7 +77,7 @@ services:
       - SUBDOMAINS=status
     networks:
       ffp:
-        ipv6_address: 2a03:4000:5e:f7f:ff::50
+        ipv6_address: 2a03:4000:3b:e5:ff::50
     depends_on:
       - cherry-status
       - grafana

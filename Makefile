@@ -1,33 +1,32 @@
-help:
+help: always
 	@echo "make start             Build and Start all RecvCtl containers."
 	@echo "make stop              Stop all RecvCtl containers."
 	@echo "make restart           Stop and Start all RecvCtl containers."
 	@echo "make update            Update all RecvCtl repositories."
-.PHONY: help
+
+always:
+.PHONY: always
 
 restart: stop start
-.PHONY: restart
 
-start: grafana xmlcollect-receiver cherry-status messagesender
+start: always grafana xmlcollect-receiver cherry-status messagesender
 	docker compose up -d --build
-.PHONY: start
 
-stop:
+stop: always
 	docker compose down --remove-orphans
-.PHONY: stop
 
 
-update: update_xmlcollect-receiver
-.PHONY: update
+update: update_xmlcollect-receiver update_cherry-status update_messagesender
 
 
-update_xmlcollect-receiver: xmlcollect-receiver
+update_xmlcollect-receiver: xmlcollect-receiver always
 	cd "$<"; make update; cd ..
-.PHONY: update_xmlcollect-receiver
 
-update_messagesender: messagesender
+update_cherry-status: cherry-status always
 	cd "$<"; make update; cd ..
-.PHONY: update_messagesender
+
+update_messagesender: messagesender always
+	cd "$<"; make update; cd ..
 
 grafana:
 	mkdir "$@"

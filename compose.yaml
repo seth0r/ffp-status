@@ -16,7 +16,7 @@ services:
       - RECVTHREADS=128
     networks:
       ffp:
-        ipv6_address: 2a03:4000:3b:e5:ff::444d
+        ipv6_address: 2a03:4000:67:1:ff::444d
 
   cherry-status:
     container_name: ffp-status-cherry

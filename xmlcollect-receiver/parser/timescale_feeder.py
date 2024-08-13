@@ -4,7 +4,13 @@ import datetime
 import tsdb
 
 class TimescaleFeeder:
+    def __init__(self):
+        self.sess = None
+
     def feed(self,res):
+        if not self.sess:
+            self.sess = tsdb.getSess()
+            self.sess.begin()
         self.feedts_nodes(res)
         if "neighbours" in res:
             self.feedts_neighbours(res)
@@ -41,37 +47,38 @@ class TimescaleFeeder:
             network = ni["network"]
             network["routes"] = res["routes"]
 
-        with tsdb.getSess() as sess:
-            node = sess.get(tsdb.Node, {"nodeid":nid})
-            if not node:
-                node = tsdb.Node( nodeid=nid, hostname=host )
-                sess.add(node)
-                self.logger.info("New node %s with hostname %s.", nid, host)
-            if not node.last_data or t > node.last_data:
-                node.last_data = t
-                if host != node.hostname:
-                    self.logger.info("Nodes hostname of %s changed from %s to %s.", nid, node.hostname, host)
-                    node.hostname = host
-                if contact is not False and contact != node.contact:
-                    node.contact = contact
-                    node.last_contact_update = t
-                    node.owners = []
-                if loc is not None:
-                    node.loc_lon = loc.get("longitude",None)
-                    node.loc_lat = loc.get("latitude",None)
-                if len(macaddrs) > 0:
-                    node.macaddrs = []
-                    for mac in macaddrs:
-                        node.macaddrs.append(tsdb.MacAddr(mac=mac))
-                if network:
-                    node.network = network
-                if software:
-                    node.software = software
-            sess.commit()
+        node = self.sess.get(tsdb.Node, {"nodeid":nid})
+        if not node:
+            node = tsdb.Node( nodeid=nid, hostname=host )
+            self.sess.add(node)
+            self.logger.info("New node %s with hostname %s.", nid, host)
+        if not node.last_data or t > node.last_data:
+            node.last_data = t
+            if host != node.hostname:
+                self.logger.info("Nodes hostname of %s changed from %s to %s.", nid, node.hostname, host)
+                node.hostname = host
+            if contact is not False and contact != node.contact:
+                node.contact = contact
+                node.last_contact_update = t
+                node.owners = []
+            if loc is not None:
+                node.loc_lon = loc.get("longitude",None)
+                node.loc_lat = loc.get("latitude",None)
+            if len(macaddrs) > 0:
+                node.macaddrs = []
+                for mac in macaddrs:
+                    node.macaddrs.append(tsdb.MacAddr(mac=mac))
+            if network:
+                node.network = network
+            if software:
+                node.software = software
 
     def feedts_neighbours(self,res):
         pass
 
     def postprocess(self, host):
-        pass
+        if self.sess:
+            self.sess.commit()
+            self.sess.close()
+            self.sess = None
 

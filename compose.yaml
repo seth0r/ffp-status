@@ -2,7 +2,9 @@ version: "3"
 services:
   xmlcollect-receiver:
     container_name: ffp-xmlcollect-receiver
-    build: xmlcollect-receiver
+    build:
+      context: .
+      dockerfile: xmlcollect-receiver.Dockerfile
     restart: unless-stopped
     mem_limit: "2g"
     volumes:

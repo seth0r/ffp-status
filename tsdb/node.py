@@ -21,6 +21,9 @@ class Node(tsdb.Base):
     network: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
     software: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
 
+    hw_model: Mapped[Optional[str]]
+    hw_nproc: Mapped[Optional[int]]
+
     settings: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
 
     macaddrs: Mapped[List["MacAddr"]] = relationship(

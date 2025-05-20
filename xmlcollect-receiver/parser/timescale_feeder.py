@@ -20,6 +20,7 @@ class TimescaleFeeder:
         nid = res["node_id"]
         host = res["host"]
         macaddrs = set()
+        ni = None
         network = None
         software = None
         loc = None
@@ -72,6 +73,9 @@ class TimescaleFeeder:
                 node.network = network
             if software:
                 node.software = software
+            if ni and "hardware" in ni:
+                node.hw_model = ni["hardware"].get("model",None)
+                node.hw_nproc = ni["hardware"].get("nproc",None)
 
     def feedts_neighbours(self,res):
         pass

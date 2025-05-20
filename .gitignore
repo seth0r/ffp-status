@@ -6,3 +6,4 @@ messagesender/
 msgcfg.env
 swag/
 db.env
+tmpstor_*.tbz

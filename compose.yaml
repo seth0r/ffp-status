@@ -19,6 +19,7 @@ services:
     networks:
       ffp:
         ipv6_address: 2a03:4000:67:1:ff::444d
+      dbs:
 
   cherry-status:
     container_name: ffp-status-cherry
@@ -29,7 +30,8 @@ services:
       - ./db.env
       - ./common.env
     networks:
-      ffp:
+      - "www"
+      - "dbs"
     healthcheck:
       test: ["CMD-SHELL", "curl --silent --fail localhost:8000/cherry-health-check || exit 1"]
       interval: 10s
@@ -47,7 +49,7 @@ services:
       - ./msgcfg.env
       - ./common.env
     networks:
-      ffp:
+      - "dbs"
 
   grafana:
     container_name: ffp-grafana
@@ -60,10 +62,17 @@ services:
       - ./grafana.env
     user: "1000"
     networks:
-      ffp:
+      - "www"
+      - "dbs"
 
 
 networks:
   ffp:
     name: ffp
+    external: true
+  dbs:
+    name: dbs
+    external: true
+  www:
+    name: www
     external: true

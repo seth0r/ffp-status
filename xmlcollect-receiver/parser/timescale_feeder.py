@@ -77,15 +77,15 @@ class TimescaleFeeder:
                 node.hw_model = ni["hardware"].get("model",None)
                 node.hw_nproc = ni["hardware"].get("nproc",None)
         if software and "autoupdater" in software and "firmware" in software:
-            nstat = self.sess.get(tsdb.NodeStat, {"nodeid":nid,"timestamp":t})
-            if not nstat:
-                nstat = tsdb.NodeStat( nodeid=nid, timestamp=t )
-                self.sess.add(nstat)
-            nstat.domain = ni.get("system",{}).get("domain_code",None)
-            nstat.au_branch = software["autoupdater"].get("branch",None)
-            nstat.au_enabled = software["autoupdater"].get("enabled",None)
-            nstat.fw_base = software["firmware"].get("base",None)
-            nstat.fw_release = software["firmware"].get("release",None)
+            s = self.sess.get(tsdb.SwStat, {"nodeid":nid,"timestamp":t})
+            if not s:
+                s = tsdb.SwStat( nodeid=nid, timestamp=t )
+                self.sess.add(s)
+            s.domain = ni.get("system",{}).get("domain_code",None)
+            s.au_branch = software["autoupdater"].get("branch",None)
+            s.au_enabled = software["autoupdater"].get("enabled",None)
+            s.fw_base = software["firmware"].get("base",None)
+            s.fw_release = software["firmware"].get("release",None)
 
     def feedts_neighbours(self,res):
         pass

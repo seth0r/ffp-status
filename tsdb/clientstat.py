@@ -1,12 +1,13 @@
 from typing import Optional
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import SmallInteger
 import tsdb
 
 class ClientStat(tsdb.Stat,tsdb.Base):
-    total: Mapped[Optional[int]]
-    wifi: Mapped[Optional[int]]
-    wifi24: Mapped[Optional[int]]
-    wifi5: Mapped[Optional[int]]
-    owe: Mapped[Optional[int]]
-    owe24: Mapped[Optional[int]]
-    owe5: Mapped[Optional[int]]
+    total:  Mapped[int] = mapped_column( SmallInteger, default=0 )
+    wifi:   Mapped[int] = mapped_column( SmallInteger, default=0 )
+    wifi24: Mapped[int] = mapped_column( SmallInteger, default=0 )
+    wifi5:  Mapped[int] = mapped_column( SmallInteger, default=0 )
+    owe:    Mapped[int] = mapped_column( SmallInteger, default=0 )
+    owe24:  Mapped[int] = mapped_column( SmallInteger, default=0 )
+    owe5:   Mapped[int] = mapped_column( SmallInteger, default=0 )

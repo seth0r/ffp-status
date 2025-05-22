@@ -92,7 +92,30 @@ class TimescaleFeeder:
             s.fw_release = software["firmware"].get("release",None)
 
     def feedts_neighbours(self,nid,t,res):
-        pass
+        for lmac,neigh in res["neighbours"].items():
+            lmacobj = self.sess.get(tsdb.MacAddr, {"mac":lmac})
+            if lmacobj is None:
+                continue
+            lnode = lmacobj.node
+            for rmac,attrs in neigh.items():
+                rmacobj = self.sess.get(tsdb.MacAddr, {"mac":rmac})
+                if rmacobj is None:
+                    continue
+                rnode = rmacobj.node
+                idattr = {
+                    "lnodeid":lnode.nodeid,
+                    "rnodeid":rnode.nodeid,
+                    "lmac":lmac,
+                    "rmac":rmac,
+                    "timestamp":t
+                }
+                l = self.sess.get(tsdb.Link, idattr)
+                if not l:
+                    l = tsdb.Link( **idattr )
+                    self.sess.add(l)
+                l.tq = attrs.get("tq",None)
+                l.lastseen = attrs.get("lastseen",None)
+                l.best = attrs.get("best",None)
 
     def feedts_conn(self,nid,t,res):
         for l3p,conns in res["conn"].items():

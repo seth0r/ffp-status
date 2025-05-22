@@ -11,13 +11,17 @@ class TimescaleFeeder:
         if not self.sess:
             self.sess = tsdb.getSess()
             self.sess.begin()
-        self.feedts_nodes(res)
-        if "neighbours" in res:
-            self.feedts_neighbours(res)
-
-    def feedts_nodes(self,res):
         t = datetime.datetime.utcfromtimestamp( res["time"] )
         nid = res["node_id"]
+        self.feedts_nodes(nid,t,res)
+        if "statistics" in res:
+            self.feedts_statistics(nid,t,res)
+        if "conn" in res:
+            self.feedts_conn(nid,t,res)
+        if "neighbours" in res:
+            self.feedts_neighbours(nid,t,res)
+
+    def feedts_nodes(self,nid,t,res):
         host = res["host"]
         macaddrs = set()
         ni = None
@@ -87,8 +91,88 @@ class TimescaleFeeder:
             s.fw_base = software["firmware"].get("base",None)
             s.fw_release = software["firmware"].get("release",None)
 
-    def feedts_neighbours(self,res):
+    def feedts_neighbours(self,nid,t,res):
         pass
+
+    def feedts_conn(self,nid,t,res):
+        for l3p,conns in res["conn"].items():
+            for l4p,num in conns.items():
+                s = self.sess.get(tsdb.ConnStat, {"nodeid":nid,"timestamp":t, "l3proto":l3p, "l4proto": l4p})
+                if not s:
+                    s = tsdb.ConnStat( nodeid=nid, timestamp=t, l3proto=l3p, l4proto=l4p )
+                    self.sess.add(s)
+                s.num = num
+
+    def feedts_statistics(self,nid,t,res):
+        for sect in ["clients","traffic","memory","stat"]:
+            if sect in res["statistics"] and hasattr(self,"feedts_statistics_%s" % sect):
+                getattr(self,"feedts_statistics_%s" % sect)(nid,t,res)
+
+    def feedts_statistics_clients(self,nid,t,res):
+        s = self.sess.get(tsdb.ClientStat, {"nodeid":nid,"timestamp":t})
+        if not s:
+            s = tsdb.ClientStat( nodeid=nid, timestamp=t )
+            self.sess.add(s)
+        stats = res["statistics"]["clients"]
+        s.total  = stats.get("total",0)
+        s.wifi   = stats.get("wifi",0)
+        s.wifi24 = stats.get("wifi24",0)
+        s.wifi5  = stats.get("wifi5",0)
+        s.owe    = stats.get("owe",0)
+        s.owe24  = stats.get("owe24",0)
+        s.owe5   = stats.get("owe5",0)
+
+    def feedts_statistics_traffic(self,nid,t,res):
+        s = self.sess.get(tsdb.TrafficStat, {"nodeid":nid,"timestamp":t})
+        if not s:
+            s = tsdb.TrafficStat( nodeid=nid, timestamp=t )
+            self.sess.add(s)
+        stats = res["statistics"]["traffic"]
+        s.rx_bytes = stats.get("rx",{}).get("bytes",None)
+        s.rx_pkgs  = stats.get("rx",{}).get("packets",None)
+        s.tx_bytes   = stats.get("tx",{}).get("bytes",None)
+        s.tx_pkgs    = stats.get("tx",{}).get("packets",None)
+        s.tx_dropped = stats.get("tx",{}).get("dropped",None)
+        s.fw_bytes = stats.get("forward",{}).get("bytes",None)
+        s.fw_pkgs  = stats.get("forward",{}).get("packets",None)
+        s.mgmt_rx_bytes = stats.get("mgmt_rx",{}).get("bytes",None)
+        s.mgmt_rx_pkgs  = stats.get("mgmt_rx",{}).get("packets",None)
+        s.mgmt_tx_bytes = stats.get("mgmt_tx",{}).get("bytes",None)
+        s.mgmt_tx_pkgs  = stats.get("mgmt_tx",{}).get("packets",None)
+
+    def feedts_statistics_memory(self,nid,t,res):
+        s = self.sess.get(tsdb.MemStat, {"nodeid":nid,"timestamp":t})
+        if not s:
+            s = tsdb.MemStat( nodeid=nid, timestamp=t )
+            self.sess.add(s)
+        stat = res["statistics"]["memory"]
+        s.total     = stat.get("total",None)
+        s.free      = stat.get("free",None)
+        s.available = stat.get("available",None)
+        s.buffers   = stat.get("buffers",None)
+        s.cached    = stat.get("cached",None)
+
+    def feedts_statistics_stat(self,nid,t,res):
+        stat = res["statistics"]["stat"].pop("cpu",None)
+        if stat:
+            for cat,num in stat.items():
+                s = self.sess.get(tsdb.CpuStat, {"nodeid":nid,"timestamp":t, "cat":cat})
+                if not s:
+                    s = tsdb.CpuStat( nodeid=nid, timestamp=t, cat=cat )
+                    self.sess.add(s)
+                s.num = num
+        s = self.sess.get(tsdb.NodeStat, {"nodeid":nid,"timestamp":t})
+        if not s:
+            s = tsdb.NodeStat( nodeid=nid, timestamp=t )
+            self.sess.add(s)
+        s.gateway_tq =   res["statistics"].get("gateway_tq",None)
+        s.rootfs_usage = res["statistics"].get("rootfs_usage",None)
+        s.uptime =       res["statistics"].get("uptime",None)
+        s.idletime =     res["statistics"].get("idletime",None)
+        s.loadavg =      res["statistics"].get("loadavg",None)
+        s.proc_running = res["statistics"].get("processes",{}).get("running",None)
+        s.proc_total =   res["statistics"].get("processes",{}).get("total",None)
+        s.other =        res["statistics"]["stat"]
 
     def postprocess(self, host):
         if self.sess:

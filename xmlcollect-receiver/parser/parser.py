@@ -3,6 +3,7 @@ import queue
 import os
 import time
 import gzip
+from copy import deepcopy
 from xml.etree import ElementTree as ET
 import parser
 from collections import defaultdict
@@ -66,7 +67,7 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
     def feed(self, res):
         for cls in self.__class__.__bases__:
             if hasattr(cls,"feed"):
-                getattr(cls,"feed")(self,res)
+                getattr(cls,"feed")(self,deepcopy(res))
 
     def postprocess(self, host):
         for cls in self.__class__.__bases__:

@@ -178,12 +178,17 @@ class TimescaleFeeder:
     def feedts_statistics_stat(self,nid,t,res):
         stat = res["statistics"]["stat"].pop("cpu",None)
         if stat:
-            for cat,num in stat.items():
-                s = self.sess.get(tsdb.CpuStat, {"nodeid":nid,"timestamp":t, "cat":cat})
-                if not s:
-                    s = tsdb.CpuStat( nodeid=nid, timestamp=t, cat=cat )
-                    self.sess.add(s)
-                s.value = num
+            s = self.sess.get(tsdb.CpuStat, {"nodeid":nid,"timestamp":t})
+            if not s:
+                s = tsdb.CpuStat( nodeid=nid, timestamp=t )
+                self.sess.add(s)
+            s.user    = stat.get("user",None)
+            s.nice    = stat.get("nice",None)
+            s.system  = stat.get("system",None)
+            s.idle    = stat.get("idle",None)
+            s.iowait  = stat.get("iowait",None)
+            s.irq     = stat.get("irq",None)
+            s.softirq = stat.get("softirq",None)
         s = self.sess.get(tsdb.NodeStat, {"nodeid":nid,"timestamp":t})
         if not s:
             s = tsdb.NodeStat( nodeid=nid, timestamp=t )

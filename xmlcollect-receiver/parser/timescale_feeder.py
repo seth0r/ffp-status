@@ -124,7 +124,7 @@ class TimescaleFeeder:
                 if not s:
                     s = tsdb.ConnStat( nodeid=nid, timestamp=t, l3proto=l3p, l4proto=l4p )
                     self.sess.add(s)
-                s.num = num
+                s.value = num
 
     def feedts_statistics(self,nid,t,res):
         for sect in ["clients","traffic","memory","stat"]:
@@ -183,7 +183,7 @@ class TimescaleFeeder:
                 if not s:
                     s = tsdb.CpuStat( nodeid=nid, timestamp=t, cat=cat )
                     self.sess.add(s)
-                s.num = num
+                s.value = num
         s = self.sess.get(tsdb.NodeStat, {"nodeid":nid,"timestamp":t})
         if not s:
             s = tsdb.NodeStat( nodeid=nid, timestamp=t )

@@ -5,4 +5,4 @@ import tsdb
 class ConnStat(tsdb.Stat,tsdb.Base):
     l3proto: Mapped[str] = mapped_column( primary_key=True )
     l4proto: Mapped[str] = mapped_column( primary_key=True )
-    num: Mapped[int] = mapped_column( default=0 )
+    value: Mapped[int] = mapped_column( default=0 )

@@ -54,7 +54,7 @@ for i in range(4):
     procs.append( Parser( TMPSTOR, scheduler ) )
 
 from cron import Cron
-procs.append( Cron() )
+procs.append( Cron( TMPSTOR=TMPSTOR ) )
 
 try:
     while True:

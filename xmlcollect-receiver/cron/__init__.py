@@ -37,8 +37,8 @@ while True:
 import time
 from base import Process,Thread
 class Cron(Process):
-    def __init__( self ):
-        super().__init__()
+    def __init__( self, **kwargs ):
+        super().__init__( **kwargs )
         self.classes = {}
         self.last = {}
         self.running = {}
@@ -60,7 +60,7 @@ class Cron(Process):
                     self.logger.info("Job %s starting...", cn)
                     self.last[cn] = now
                     try:
-                        i = c()
+                        i = c( **self.kwargs )
                         if not i.is_alive():
                             i.start()
                         self.running[cn] = i

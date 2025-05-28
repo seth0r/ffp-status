@@ -3,6 +3,7 @@ import queue
 import os
 import time
 import gzip
+import itertools
 from copy import deepcopy
 from xml.etree import ElementTree as ET
 import parser
@@ -25,10 +26,35 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
         self.logger.info("Started...")
         while not self.shouldstop():
             try:
-                host, files = self.scheduler.get(timeout=1)
-                for f in sorted(files):
-                    self.parse( host, f )
-                self.postprocess( host )
+                now = time.time()
+                host, all_files = self.scheduler.get(timeout=1)
+                for files in itertools.batched(sorted(all_files),100):
+                    for f in files:
+                        try:
+                            t = int(f.partition(".")[0])
+                            if len(all_files) > 1000 or now - t < 35*24*60*60:
+                                self.parse( host, f )
+                            else:
+                                self.logger.warning("Ignoring %s, too old." % f)
+                        except ValueError:
+                            self.logger.warning("Ignoring %s." % f)
+                    self.postprocess( host )
+                    for f in files:
+                        fp = os.path.join( self.stordir, host, f )
+                        try:
+                            t = int(f.partition(".")[0])
+                            if len(all_files) > 1000 or now - t < 35*24*60*60:
+                                mvdir = os.path.join( self.stordir, "." + time.strftime("%Y-%m-%d",time.gmtime(t)), host )
+                            else:
+                                mvdir = os.path.join( self.stordir, ".old", host )
+                        except ValueError:
+                            mvdir = os.path.join( self.stordir, ".err", host )
+                        os.makedirs( mvdir, exist_ok = True)
+                        os.rename( fp, os.path.join( mvdir, f ) )
+                try:
+                    os.removedirs( os.path.join( self.stordir, host ) )
+                except OSError:
+                    pass
             except queue.Empty:
                 pass
         self.logger.info("Stopped.")
@@ -50,9 +76,6 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
                 self.logger.warning("Parsing of %s from %s not implemented.", fname, host)
         except Exception as ex:
             self.logger.exception("Error parsing %s from %s.", fname, host)
-        mvdir = os.path.join( self.stordir, "." + time.strftime("%Y-%m-%d",time.gmtime()), host )
-        os.makedirs( mvdir, exist_ok = True)
-        os.rename( fp, os.path.join( mvdir, fname ) )
 
     def parse_xml(self, fo, host):
         res = defdict()

@@ -4,7 +4,7 @@ import json
 class ffgParser:
     def ffgstat_start(self, elem, res, host):
         if elem.attrib["host"] != host:
-            raise Exception("Hostname in filename and XML do ot match.")
+            raise Exception("Hostname in filename and XML do not match.")
         res["host"] = host
         res["time"] = int(elem.attrib["time"])
         res["scriptver"] = elem.attrib["ver"]

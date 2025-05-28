@@ -17,15 +17,16 @@ class Link(tsdb.Base):
     timestamp = Column(
         DateTime(), default=datetime.datetime.now, primary_key=True
     )
+    compacted: Mapped[bool] = mapped_column( default=False )
  
     lnodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
     rnodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
     lmac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
     rmac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
 
-    tq:       Mapped[Optional[int]] = mapped_column( SmallInteger )
-    lastseen: Mapped[Optional[float]]
-    best:     Mapped[Optional[bool]]
+    tq:       Mapped[int] = mapped_column( SmallInteger )
+    lastseen: Mapped[float]
+    best:     Mapped[bool]
 
     lnode = relationship("Node", foreign_keys=[lnodeid])
     rnode = relationship("Node", foreign_keys=[rnodeid])

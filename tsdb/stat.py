@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, DateTime, Column, ForeignKey
 from sqlalchemy.ext.declarative import declared_attr
 
@@ -17,6 +17,7 @@ class Stat:
     timestamp = Column(
         DateTime(), default=datetime.datetime.now, primary_key=True
     )
+    compacted: Mapped[bool] = mapped_column( default=False )
     
     @declared_attr
     def nodeid(cls):

@@ -5,11 +5,11 @@ from sqlalchemy import SmallInteger
 import tsdb
 
 class NodeStat(tsdb.Stat,tsdb.Base):
-    gateway_tq: Mapped[Optional[int]] = mapped_column( SmallInteger )
-    rootfs_usage: Mapped[Optional[float]]
-    uptime: Mapped[Optional[float]]
-    idletime: Mapped[Optional[float]]
-    loadavg: Mapped[Optional[float]]
-    proc_running: Mapped[Optional[int]] = mapped_column( SmallInteger )
-    proc_total:   Mapped[Optional[int]] = mapped_column( SmallInteger )
+    gateway_tq: Mapped[int] = mapped_column( SmallInteger )
+    rootfs_usage: Mapped[float]
+    uptime: Mapped[float]
+    idletime: Mapped[float]
+    loadavg: Mapped[float]
+    proc_running: Mapped[int] = mapped_column( SmallInteger )
+    proc_total:   Mapped[int] = mapped_column( SmallInteger )
     other: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )

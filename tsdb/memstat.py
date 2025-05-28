@@ -3,8 +3,8 @@ from sqlalchemy.orm import Mapped
 import tsdb
 
 class MemStat(tsdb.Stat,tsdb.Base):
-    total:     Mapped[Optional[int]]
-    free:      Mapped[Optional[int]]
-    available: Mapped[Optional[int]]
-    buffers:   Mapped[Optional[int]]
-    cached:    Mapped[Optional[int]]
+    total:     Mapped[int]
+    free:      Mapped[int]
+    available: Mapped[int]
+    buffers:   Mapped[int]
+    cached:    Mapped[int]

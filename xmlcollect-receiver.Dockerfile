@@ -1,13 +1,9 @@
-FROM debian:bullseye
+FROM python:3.12-bookworm
 MAINTAINER me+docker@seth0r.net
 
 RUN apt-get update
 RUN apt-get dist-upgrade -y
-RUN apt-get -y install vim python3-all python3-cherrypy3 python3-jinja2 python3-pymongo python3-requests python3-sympy python3-pip python3-psycopg2 gpg wget gnupg2 curl procps
-
-RUN pip3 install influxdb-client
-RUN pip3 install sqlalchemy-timescaledb
-RUN pip3 install sqlalchemy-json
+RUN apt-get -y install vim gpg wget gnupg2 curl procps
 
 EXPOSE 17485
 
@@ -15,9 +11,21 @@ ENV TMPSTOR /tmpstor
 ENV PORT 17485
 ENV RECVTHREADS 128
 
+WORKDIR /code
+
+# venv
+ENV VIRTUAL_ENV=/code/venv
+
+# python setup
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# upgrade pip
+RUN pip install --upgrade pip
+
 COPY xmlcollect-receiver /code
 COPY tsdb /code/tsdb
 
-WORKDIR /code
+RUN pip install -r requirements.txt
 
 CMD ["./main.py"]

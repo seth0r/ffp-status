@@ -12,7 +12,7 @@ while True:
         try:
             if DEBUG:
                 print("Trying to load %s..." % mname, end=" ")
-            module = loader.find_module(mname).load_module(mname)
+            module = loader.find_spec(mname).loader.load_module(mname)
             for name, value in inspect.getmembers(module):
                 if name.startswith('__'):
                     continue

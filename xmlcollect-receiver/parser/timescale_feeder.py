@@ -8,6 +8,7 @@ class TimescaleFeeder:
         self.sess = None
 
     def feed(self,res):
+        res = res.todict()
         if not self.sess:
             self.sess = tsdb.getSess()
             self.sess.begin()

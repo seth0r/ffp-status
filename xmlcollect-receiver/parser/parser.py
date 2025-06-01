@@ -13,6 +13,15 @@ class defdict(defaultdict):
     def __init__(self,*args):
         super().__init__(self.__class__)
 
+    def todict(self):
+        res = {}
+        for k,v in self.items():
+            if isinstance(v,defdict):
+                res[k] = v.todict()
+            else:
+                res[k] = v
+        return res
+
 class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder, parser.TimescaleFeeder ):
     def __init__( self, stordir, scheduler = None ):
         for cls in self.__class__.__bases__:

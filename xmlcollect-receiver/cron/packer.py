@@ -3,6 +3,7 @@ import os
 import time
 import glob
 import zipfile
+import gzip
 
 class Packer(Process):
     INTERVAL = 3600
@@ -19,7 +20,12 @@ class Packer(Process):
             fn = os.path.join( fn1,fn2 )
             if zfn not in zfs:
                 zfs[zfn] = zipfile.ZipFile(zfn,'a')
-            zfs[zfn].write(f,fn)
+            if f.endswith(".gz"):
+                fn = fn.rpartition(".")[0]
+                with gzip.open(f,"rt") as gzf:
+                    zfs[zfn].writestr(fn,gzf.read())
+            else:
+                zfs[zfn].write(f,fn)
             dellist.append(f)
             self.logger.info("%s -> %s : %s" % (f,zfn,fn))
             if len(zfs) > 3:

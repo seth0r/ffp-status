@@ -5,6 +5,7 @@ import threading
 import time
 import os
 import string
+import gzip
 from base import Thread
 
 VALIDCHARS = string.digits + string.ascii_letters + ' .-_'
@@ -63,10 +64,18 @@ class Receiver(Thread):
 
     def stor_received(self,filename, hostname, buf):
         os.makedirs(os.path.join(self.stordir,hostname), exist_ok = True)
-        fp = os.path.join(self.stordir,hostname,filename)
-        f = open(fp,"wb")
-        f.write(buf)
-        f.close()
+        if filename.endswith(".gz"):
+            filename = filename.rpartition(".")[0]
+            fp = os.path.join(self.stordir,hostname,filename)
+            f = open(fp,"wb")
+            f.write(gzip.decompress(buf))
+            f.close()
+        else:
+            fp = os.path.join(self.stordir,hostname,filename)
+            f = open(fp,"wb")
+            f.write(buf)
+            f.close()
+        return filename
 
     def receive(self,conn,ip,port):
         start = time.time()
@@ -104,10 +113,10 @@ class Receiver(Thread):
                                 while len(buf) < length and time.time() - start < 5:
                                     buf += conn.recv(length)
                                 if len(buf) == length:
-                                    self.stor_received( filename, hostname, buf )
-                                    self.logger.info("Received %s with %d bytes for %s from %s" % (filename,length,hostname,ip))
+                                    savename = self.stor_received( filename, hostname, buf )
+                                    self.logger.info("Received %s with %d bytes for %s from %s, saved as %s." % (filename,length,hostname,ip,savename))
                                     if self.scheduler:
-                                        self.scheduler.put( time.time(), hostname, filename )
+                                        self.scheduler.put( time.time(), hostname, savename )
                                     conn.sendall(b'success')
                                 elif len(buf) > length:
                                     self.logger.warning("Did receive %d bytes, instead of %d bytes from %s" % (len(buf),length,ip))

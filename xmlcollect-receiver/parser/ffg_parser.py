@@ -8,6 +8,8 @@ class ffgParser:
         res["host"] = host
         res["time"] = int(elem.attrib["time"])
         res["scriptver"] = elem.attrib["ver"]
+        if "nodeid" in elem.attrib:
+            res["nodeid"] = elem.attrib["nodeid"]
     def ffgstat_end(self, elem, res, host):
         pass
 

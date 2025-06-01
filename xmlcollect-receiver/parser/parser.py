@@ -37,7 +37,8 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
             try:
                 now = time.time()
                 host, all_files = self.scheduler.get(timeout=1)
-                for files in itertools.batched(sorted(all_files),100):
+                self.logger.info("Parsing %d files from %s..." % (len(all_files),host))
+                for files in itertools.batched(sorted(all_files),1000):
                     for f in files:
                         try:
                             t = int(f.partition(".")[0])
@@ -60,6 +61,8 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
                             mvdir = os.path.join( self.stordir, ".err", host )
                         os.makedirs( mvdir, exist_ok = True)
                         os.rename( fp, os.path.join( mvdir, f ) )
+                diff = time.time() - now
+                self.logger.info("Parsed %d files from %s in %.3f seconds (%.1f/s)" % (len(all_files), host, diff, len(all_files) / diff ))
                 try:
                     os.removedirs( os.path.join( self.stordir, host ) )
                 except OSError:
@@ -73,7 +76,7 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
         if not os.path.isfile(fp):
             self.logger.warning("%s from %s not found.",fname,host)
             return
-        self.logger.info("Parsing %s from %s...",fname,host)
+        self.logger.debug("Parsing %s from %s...",fname,host)
         try:
             if fname.endswith(".gz"):
                 with gzip.open(fp,"rt") as fo:

@@ -1,5 +1,6 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Session as SQLSession
 
@@ -19,8 +20,29 @@ __all__ = []
 
 import pkgutil
 import inspect
+import time
+import logging
+import os
 
-DEBUG = False
+DEBUG = os.getenv("DEBUG","0").lower() in ["yes","true","on","1"]
+
+logging.basicConfig()
+logger = logging.getLogger("myapp.sqltime")
+if DEBUG:
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.WARN)
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault('query_start_time', []).append(time.time())
+    logger.debug("Start Query: %s", statement)
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.time() - conn.info['query_start_time'].pop(-1)
+    logger.debug("Query Complete!")
+    logger.debug("Total Time: %f", total)
 
 modules = []
 lastn = None

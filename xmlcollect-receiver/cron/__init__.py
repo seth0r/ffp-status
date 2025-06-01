@@ -2,8 +2,9 @@ __all__ = []
 
 import pkgutil
 import inspect
+import os
 
-DEBUG = False
+DEBUG = os.getenv("DEBUG","0").lower() in ["yes","true","on","1"]
 
 lastn = None
 maxtrys = len(list( pkgutil.walk_packages(__path__) ))

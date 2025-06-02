@@ -67,6 +67,7 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
                     os.removedirs( os.path.join( self.stordir, host ) )
                 except OSError:
                     pass
+                self.scheduler.done(host)
             except queue.Empty:
                 pass
         self.logger.info("Stopped.")

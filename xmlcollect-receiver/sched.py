@@ -13,6 +13,8 @@ class Scheduler(Process):
         self.waittime = waittime
         self.inq = multiprocessing.Queue()
         self.outq = multiprocessing.Queue()
+        self.doneq = multiprocessing.Queue()
+        self.processing = set()
         self.files = collections.defaultdict(set)
         self.lastfile = collections.defaultdict(float)
         self.start()
@@ -25,18 +27,23 @@ class Scheduler(Process):
                 self.logger.info("%s alive, inQueue: %d, outQueue: %d" % (self.__class__.__name__, self.inq.qsize(), self.outq.qsize()))
                 lastmsg = now
             try:
-                ts,hostname,filename = self.inq.get(timeout=1)
+                for i in range(1000):
+                    ts,hostname,filename = self.inq.get(timeout=0.01)
+                    self.files[hostname].add(filename)
+                    self.lastfile[hostname] = max( self.lastfile[hostname], ts )
             except queue.Empty:
                 pass
-            except KeyboardInterrupt:
-                break
-            else:
-                self.files[hostname].add(filename)
-                self.lastfile[hostname] = max( self.lastfile[hostname], ts )
+            try:
+                for i in range(10):
+                    host = self.doneq.get(timeout=0.01)
+                    self.processing.discard(host)
+            except queue.Empty:
+                pass
             now = time.time()
             for h in list(self.files.keys()):
                 ts = self.lastfile[h]
-                if now - ts > self.waittime:
+                if h not in self.processing and now - ts > self.waittime:
+                    self.processing.add(h)
                     self.outq.put(( h, list(sorted(self.files[h])) ))
                     del self.lastfile[h]
                     del self.files[h]
@@ -46,3 +53,6 @@ class Scheduler(Process):
 
     def get(self,*args,**kwargs):
         return self.outq.get(*args,**kwargs)
+
+    def done(self,host):
+        self.doneq.put(host)

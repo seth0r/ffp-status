@@ -49,7 +49,7 @@ class LocationGuesser(Process):
                 self.logger.info("  %s: %f using %f as pseudo distance", neigh[nid]['host'], tq, 1 / (tq**2) )
             x,y = self.guess_location( neigh, ntqs )
             if x and y:
-                self.mdb["node_settings"].update({"_id":node["_id"]},{"$set":{"location_guess":[x,y]}},upsert=True)
+                self.mdb["node_settings"].update_one({"_id":node["_id"]},{"$set":{"location_guess":[x,y]}},upsert=True)
                 self.logger.info("  Guessed location of %s: %f : %f", node["host"], x, y)
 
     def guess_location(self, neigh, ntqs ):

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 from sqlalchemy import select,delete
 from sqlalchemy.sql.expression import func
@@ -24,10 +25,6 @@ for (n,) in sess.execute( select(tsdb.Node) ):
         if cnt > 0:
             res = sess.execute( delete(stat).where(stat.nodeid == n.nodeid).where(stat.timestamp < t) )
             print(n.hostname, stat.__name__, cnt, res.rowcount)
-    cnt = sess.execute( select(tsdb.Link).with_only_columns(func.count()).where(tsdb.Link.lnodeid == n.nodeid).where(tsdb.Link.timestamp < t) ).scalar()
-    if cnt > 0:
-        res = sess.execute( delete(tsdb.Link).where(tsdb.Link.lnodeid == n.nodeid).where(tsdb.Link.timestamp < t) )
-        print(n.hostname, "Link", cnt, res.rowcount)
             
 sess.commit()
 sess.close()

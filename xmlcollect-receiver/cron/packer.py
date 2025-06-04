@@ -11,7 +11,7 @@ class Packer(Process):
         stordir = self.kwargs["TMPSTOR"]
         zfs = {}
         dellist = []
-        for f in glob.glob( os.path.join( stordir, ".*", "*", "*" ) ):
+        for f in sorted(glob.glob( os.path.join( stordir, ".*", "*", "*" ) ))[:1000000]:
             if time.time() - os.path.getmtime(f) < self.INTERVAL:
                 continue
             p,fn2 = os.path.split(f)
@@ -22,12 +22,23 @@ class Packer(Process):
                 zfs[zfn] = zipfile.ZipFile(zfn,'a')
             if f.endswith(".gz"):
                 fn = fn.rpartition(".")[0]
-                with gzip.open(f,"rt") as gzf:
-                    zfs[zfn].writestr(fn,gzf.read())
+                with gzip.open(f,"rb") as gzf:
+                    buf = gzf.read()
             else:
-                zfs[zfn].write(f,fn)
+                with open(f,"rb") as fi:
+                    buf = fi.read()
+            try:
+                with zfs[zfn].open(fn,"r") as fi:
+                    same = fi.read() == buf
+                if not same:
+                    zfs[zfn].writestr(fn,buf)
+                    self.logger.info("%s -> %s : %s" % (f,zfn,fn))
+                else:
+                    self.logger.info("%s already in %s." % (f,zfn))
+            except KeyError:
+                zfs[zfn].writestr(fn,buf)
+                self.logger.info("%s -> %s : %s" % (f,zfn,fn))
             dellist.append(f)
-            self.logger.info("%s -> %s : %s" % (f,zfn,fn))
             if len(zfs) > 3:
                 first = sorted(zfs.keys())[0]
                 zfs[first].close()

@@ -61,7 +61,7 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
                         except ValueError:
                             mvdir = os.path.join( self.stordir, ".err", host )
                         os.makedirs( mvdir, exist_ok = True)
-                        os.rename( fp, os.path.join( mvdir, f ) )
+                        os.replace( fp, os.path.join( mvdir, f ) )
                 diff = time.time() - now
                 self.logger.info("Parsed %d files from %s in %.3f seconds (%.1f/s)" % (len(all_files), host, diff, len(all_files) / diff ))
                 try:

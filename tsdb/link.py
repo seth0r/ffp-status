@@ -6,27 +6,14 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import Mapped, mapped_column
 import tsdb
 
-class Link(tsdb.Base):
-    __tablename__ = "links"
-    __table_args__ = ({
-        'timescaledb_hypertable':{
-            'time_column_name': 'timestamp'
-        }
-    })
-
-    timestamp = Column(
-        DateTime(), default=datetime.datetime.now, primary_key=True
-    )
-    compacted: Mapped[bool] = mapped_column( default=False )
- 
-    lnodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
-    rnodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
-    lmac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
-    rmac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
+class Link(tsdb.Stat,tsdb.Base):
+    remotenodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
+    mac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
+    remotemac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
 
     tq:       Mapped[int] = mapped_column( SmallInteger )
     lastseen: Mapped[float]
     best:     Mapped[bool]
 
-    lnode = relationship("Node", foreign_keys=[lnodeid])
-    rnode = relationship("Node", foreign_keys=[rnodeid])
+    node = relationship("Node", foreign_keys="[Link.nodeid]")
+    remotenode = relationship("Node", foreign_keys=[remotenodeid])

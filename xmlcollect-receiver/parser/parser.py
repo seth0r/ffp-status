@@ -39,6 +39,7 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
                 host, all_files = self.scheduler.get(timeout=1)
                 self.logger.info("Parsing %d files from %s..." % (len(all_files),host))
                 for files in itertools.batched(sorted(all_files),1000):
+                    self.preprocess(host, files)
                     for f in files:
                         try:
                             t = int(f.partition(".")[0])
@@ -99,6 +100,11 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
             else:
                 self.logger.warning("No method %s.",fnk)
         self.feed(res)
+
+    def preprocess(self, host, files):
+        for cls in self.__class__.__bases__:
+            if hasattr(cls,"preprocess"):
+                getattr(cls,"preprocess")(self,host,files)
 
     def feed(self, res):
         for cls in self.__class__.__bases__:

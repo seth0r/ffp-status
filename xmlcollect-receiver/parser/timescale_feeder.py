@@ -1,17 +1,81 @@
 import os
 import copy
 import datetime
+from sqlalchemy import select,between
 import tsdb
 
 class TimescaleFeeder:
     def __init__(self):
         self.sess = None
+        self.times = None
+
+    def query_Stat(self, stat, **kwargs):
+        if self.times:
+            ts = kwargs["timestamp"]
+            s = None
+            if ts in self.times[ stat.__name__ ]:
+                s = self.sess.get(stat, kwargs)
+                if s and not s.compacted:
+                    return
+            if not s:
+                self.times[ stat.__name__ ].add(ts)
+                s = stat( **kwargs )
+                self.sess.add(s)
+        else:
+            s = self.sess.get(stat, kwargs)
+            if not s:
+                s = stat( **kwargs )
+                self.sess.add(s)
+            elif not s.compacted:
+                return
+        s.compacted = False
+        return s
+
+    def preprocess(self, host, files):
+        if self.sess:
+            self.sess.close()
+        self.sess = tsdb.getSess()
+        self.sess.begin()
+        self.times = {}
+        self.prepare_times(host,files)
+
+    def prepare_times(self,host,files):
+        try:
+            first = int(files[0].partition(".")[0])
+            last = int(files[-1].partition(".")[0])
+        except ValueError:
+            return
+        if last - first > 24*60*60:
+            first_files = []
+            last_files = []
+            for f in files:
+                try:
+                    ft = int(f.partition(".")[0])
+                except ValueError:
+                    continue
+                if abs(ft - first) < abs(last - ft):
+                    first_files.append(f)
+                else:
+                    last_files.append(f)
+            self.prepare_times(host,first_files)
+            self.prepare_times(host,last_files)
+            return
+        first = datetime.datetime.utcfromtimestamp( first )
+        last = datetime.datetime.utcfromtimestamp( last )
+        nids = sorted( self.sess.execute( select( tsdb.Node ).with_only_columns( tsdb.Node.nodeid ).where( tsdb.Node.hostname == host ) ).scalars().all() )
+        for stat in tsdb.Stat.__subclasses__():
+            if stat.__name__ not in self.times:
+                self.times[ stat.__name__ ] = set()
+            times = self.times[ stat.__name__ ]
+            for nid in nids:
+                times.update(set( self.sess.execute( select( stat )
+                    .with_only_columns( stat.timestamp )
+                    .where( stat.nodeid == nid )
+                    .where( between( stat.timestamp,first,last ) ) 
+                ).scalars().all() ))
 
     def feed(self,res):
         res = res.todict()
-        if not self.sess:
-            self.sess = tsdb.getSess()
-            self.sess.begin()
         t = datetime.datetime.utcfromtimestamp( res["time"] )
         nid = res["node_id"]
         self.feedts_nodes(nid,t,res)
@@ -106,35 +170,23 @@ class TimescaleFeeder:
                 if rmacobj is None:
                     continue
                 rnode = rmacobj.node
-                idattr = {
-                    "lnodeid":lnode.nodeid,
-                    "rnodeid":rnode.nodeid,
-                    "lmac":lmac,
-                    "rmac":rmac,
-                    "timestamp":t
-                }
-                l = self.sess.get(tsdb.Link, idattr)
-                if l and not l.compacted:
-                    continue
-                elif not l:
-                    l = tsdb.Link( **idattr )
-                    self.sess.add(l)
-                l.compacted = False
-                l.tq = attrs["tq"]
-                l.lastseen = attrs["lastseen"]
-                l.best = attrs["best"]
+                l = self.query_Stat( tsdb.Link,
+                    nodeid = lnode.nodeid,
+                    remotenodeid = rnode.nodeid,
+                    mac = lmac,
+                    remotemac = rmac,
+                    timestamp = t )
+                if l:
+                    l.tq = attrs["tq"]
+                    l.lastseen = attrs["lastseen"]
+                    l.best = attrs["best"]
 
     def feedts_conn(self,nid,t,res):
         for l3p,conns in res["conn"].items():
             for l4p,num in conns.items():
-                s = self.sess.get(tsdb.ConnStat, {"nodeid":nid,"timestamp":t, "l3proto":l3p, "l4proto": l4p})
-                if s and not s.compacted:
-                    continue
-                elif not s:
-                    s = tsdb.ConnStat( nodeid=nid, timestamp=t, l3proto=l3p, l4proto=l4p )
-                    self.sess.add(s)
-                s.compacted = False
-                s.value = num
+                s = self.query_Stat( tsdb.ConnStat, nodeid=nid, timestamp=t, l3proto=l3p, l4proto=l4p )
+                if s:
+                    s.value = num
 
     def feedts_statistics(self,nid,t,res):
         for sect in ["clients","traffic","memory","stat"]:
@@ -142,96 +194,72 @@ class TimescaleFeeder:
                 getattr(self,"feedts_statistics_%s" % sect)(nid,t,res)
 
     def feedts_statistics_clients(self,nid,t,res):
-        s = self.sess.get(tsdb.ClientStat, {"nodeid":nid,"timestamp":t})
-        if s and not s.compacted:
-            return
-        elif not s:
-            s = tsdb.ClientStat( nodeid=nid, timestamp=t )
-            self.sess.add(s)
-        s.compacted = False
-        stats = res["statistics"]["clients"]
-        s.total  = stats.get("total",0)
-        s.wifi   = stats.get("wifi",0)
-        s.wifi24 = stats.get("wifi24",0)
-        s.wifi5  = stats.get("wifi5",0)
-        s.owe    = stats.get("owe",0)
-        s.owe24  = stats.get("owe24",0)
-        s.owe5   = stats.get("owe5",0)
+        s = self.query_Stat( tsdb.ClientStat, nodeid=nid, timestamp=t )
+        if s:
+            stats = res["statistics"]["clients"]
+            s.total  = stats.get("total",0)
+            s.wifi   = stats.get("wifi",0)
+            s.wifi24 = stats.get("wifi24",0)
+            s.wifi5  = stats.get("wifi5",0)
+            s.owe    = stats.get("owe",0)
+            s.owe24  = stats.get("owe24",0)
+            s.owe5   = stats.get("owe5",0)
 
     def feedts_statistics_traffic(self,nid,t,res):
-        s = self.sess.get(tsdb.TrafficStat, {"nodeid":nid,"timestamp":t})
-        if s and not s.compacted:
-            return
-        elif not s:
-            s = tsdb.TrafficStat( nodeid=nid, timestamp=t )
-            self.sess.add(s)
-        s.compacted = False
-        stats = res["statistics"]["traffic"]
-        s.rx_bytes = stats["rx"]["bytes"]
-        s.rx_pkgs  = stats["rx"]["packets"]
-        s.tx_bytes   = stats["tx"]["bytes"]
-        s.tx_pkgs    = stats["tx"]["packets"]
-        s.tx_dropped = stats["tx"]["dropped"]
-        s.fw_bytes = stats["forward"]["bytes"]
-        s.fw_pkgs  = stats["forward"]["packets"]
-        s.mgmt_rx_bytes = stats["mgmt_rx"]["bytes"]
-        s.mgmt_rx_pkgs  = stats["mgmt_rx"]["packets"]
-        s.mgmt_tx_bytes = stats["mgmt_tx"]["bytes"]
-        s.mgmt_tx_pkgs  = stats["mgmt_tx"]["packets"]
+        s = self.query_Stat( tsdb.TrafficStat, nodeid=nid, timestamp=t )
+        if s:
+            stats = res["statistics"]["traffic"]
+            s.rx_bytes = stats["rx"]["bytes"]
+            s.rx_pkgs  = stats["rx"]["packets"]
+            s.tx_bytes   = stats["tx"]["bytes"]
+            s.tx_pkgs    = stats["tx"]["packets"]
+            s.tx_dropped = stats["tx"]["dropped"]
+            s.fw_bytes = stats["forward"]["bytes"]
+            s.fw_pkgs  = stats["forward"]["packets"]
+            s.mgmt_rx_bytes = stats["mgmt_rx"]["bytes"]
+            s.mgmt_rx_pkgs  = stats["mgmt_rx"]["packets"]
+            s.mgmt_tx_bytes = stats["mgmt_tx"]["bytes"]
+            s.mgmt_tx_pkgs  = stats["mgmt_tx"]["packets"]
 
     def feedts_statistics_memory(self,nid,t,res):
-        s = self.sess.get(tsdb.MemStat, {"nodeid":nid,"timestamp":t})
-        if s and not s.compacted:
-            return
-        elif not s:
-            s = tsdb.MemStat( nodeid=nid, timestamp=t )
-            self.sess.add(s)
-        s.compacted = False
-        stat = res["statistics"]["memory"]
-        s.total     = stat["total"]
-        s.free      = stat["free"]
-        s.available = stat["available"]
-        s.buffers   = stat["buffers"]
-        s.cached    = stat["cached"]
+        s = self.query_Stat( tsdb.MemStat, nodeid=nid, timestamp=t )
+        if s:
+            stat = res["statistics"]["memory"]
+            s.total     = stat["total"]
+            s.free      = stat["free"]
+            s.available = stat["available"]
+            s.buffers   = stat["buffers"]
+            s.cached    = stat["cached"]
 
     def feedts_statistics_stat_cpu(self,nid,t,res):
         stat = res["statistics"]["stat"].pop("cpu",None)
         if stat:
-            s = self.sess.get(tsdb.CpuStat, {"nodeid":nid,"timestamp":t})
-            if s and not s.compacted:
-                return
-            elif not s:
-                s = tsdb.CpuStat( nodeid=nid, timestamp=t )
-                self.sess.add(s)
-            s.compacted = False
-            s.user    = stat["user"]
-            s.nice    = stat["nice"]
-            s.system  = stat["system"]
-            s.idle    = stat["idle"]
-            s.iowait  = stat["iowait"]
-            s.irq     = stat["irq"]
-            s.softirq = stat["softirq"]
+            s = self.query_Stat( tsdb.CpuStat, nodeid=nid, timestamp=t )
+            if s:
+                s.user    = stat["user"]
+                s.nice    = stat["nice"]
+                s.system  = stat["system"]
+                s.idle    = stat["idle"]
+                s.iowait  = stat["iowait"]
+                s.irq     = stat["irq"]
+                s.softirq = stat["softirq"]
 
     def feedts_statistics_stat(self,nid,t,res):
         self.feedts_statistics_stat_cpu(nid,t,res)
-        s = self.sess.get(tsdb.NodeStat, {"nodeid":nid,"timestamp":t})
-        if s and not s.compacted:
-            return
-        elif not s:
-            s = tsdb.NodeStat( nodeid=nid, timestamp=t )
-            self.sess.add(s)
-        s.compacted = False
-        s.gateway_tq =   res["statistics"].get("gateway_tq",0)
-        s.rootfs_usage = res["statistics"]["rootfs_usage"]
-        s.uptime =       res["statistics"]["uptime"]
-        s.idletime =     res["statistics"]["idletime"]
-        s.loadavg =      res["statistics"]["loadavg"]
-        s.proc_running = res["statistics"]["processes"]["running"]
-        s.proc_total =   res["statistics"]["processes"]["total"]
-        s.other =        res["statistics"]["stat"]
+        s = self.query_Stat( tsdb.NodeStat, nodeid=nid, timestamp=t )
+        if s:
+            s.gateway_tq =   res["statistics"].get("gateway_tq",0)
+            s.rootfs_usage = res["statistics"]["rootfs_usage"]
+            s.uptime =       res["statistics"]["uptime"]
+            s.idletime =     res["statistics"]["idletime"]
+            s.loadavg =      res["statistics"]["loadavg"]
+            s.proc_running = res["statistics"]["processes"]["running"]
+            s.proc_total =   res["statistics"]["processes"]["total"]
+            s.other =        res["statistics"]["stat"]
 
     def postprocess(self, host):
         if self.sess:
             self.sess.commit()
             self.sess.close()
             self.sess = None
+            self.times = None

@@ -23,6 +23,10 @@ class defdict(defaultdict):
         return res
 
 class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder, parser.TimescaleFeeder ):
+    BATCHSIZE = 1000        # split into smaller batches of this many files
+    MAXAGE = 35*24*60*60    # max age of files to parse
+    HISTAGE = 30*24*60*60   # age of a file when it is considered historical and the above limit is ignored
+
     def __init__( self, stordir, scheduler = None ):
         for cls in self.__class__.__bases__:
             if hasattr(cls,"__init__"):
@@ -38,12 +42,13 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
                 now = time.time()
                 host, all_files = self.scheduler.get(timeout=1)
                 self.logger.info("Parsing %d files from %s..." % (len(all_files),host))
-                for files in itertools.batched(sorted(all_files),1000):
+                for files in itertools.batched(sorted(all_files),self.BATCHSIZE):
                     self.preprocess(host, files)
                     for f in files:
+                        fp = os.path.join( self.stordir, host, f )
                         try:
                             t = int(f.partition(".")[0])
-                            if len(all_files) > 1000 or now - t < 35*24*60*60:
+                            if now - t < self.MAXAGE or now - os.path.getmtime(fp) > self.HISTAGE:
                                 self.parse( host, f )
                             else:
                                 self.logger.warning("Ignoring %s, too old." % f)
@@ -54,7 +59,7 @@ class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder
                         fp = os.path.join( self.stordir, host, f )
                         try:
                             t = int(f.partition(".")[0])
-                            if len(all_files) > 1000 or now - t < 35*24*60*60:
+                            if now - t < self.MAXAGE or now - os.path.getmtime(fp) > self.HISTAGE:
                                 mvdir = os.path.join( self.stordir, "." + time.strftime("%Y-%m-%d",time.gmtime(t)), host )
                             else:
                                 mvdir = os.path.join( self.stordir, ".old", host )

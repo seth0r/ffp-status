@@ -10,7 +10,7 @@ class TimescaleFeeder:
         self.times = None
 
     def query_Stat(self, stat, **kwargs):
-        if self.times:
+        if self.times and stat.__name__ in self.times:
             ts = kwargs["timestamp"]
             s = None
             if ts in self.times[ stat.__name__ ]:
@@ -45,6 +45,7 @@ class TimescaleFeeder:
             last = int(files[-1].partition(".")[0])
         except ValueError:
             return
+        self.logger.debug("Loading times from %d to %d..." % (first,last))
         if last - first > 24*60*60:
             first_files = []
             last_files = []
@@ -63,16 +64,21 @@ class TimescaleFeeder:
         first = datetime.datetime.utcfromtimestamp( first )
         last = datetime.datetime.utcfromtimestamp( last )
         nids = sorted( self.sess.execute( select( tsdb.Node ).with_only_columns( tsdb.Node.nodeid ).where( tsdb.Node.hostname == host ) ).scalars().all() )
+        if len(nids) == 0:
+            return
         for stat in tsdb.Stat.__subclasses__():
             if stat.__name__ not in self.times:
                 self.times[ stat.__name__ ] = set()
             times = self.times[ stat.__name__ ]
             for nid in nids:
-                times.update(set( self.sess.execute( select( stat )
+                new = set( self.sess.execute( select( stat )
                     .with_only_columns( stat.timestamp )
                     .where( stat.nodeid == nid )
                     .where( between( stat.timestamp,first,last ) ) 
-                ).scalars().all() ))
+                ).scalars().all() )
+                times.update( new )
+                self.logger.debug("%s.%s: %d" % (stat.__name__,nid,len(new)))
+
 
     def feed(self,res):
         res = res.todict()

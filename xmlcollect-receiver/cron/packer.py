@@ -17,27 +17,27 @@ class Packer(Process):
             p,fn2 = os.path.split(f)
             p,fn1 = os.path.split(p)
             zfn = "%s.zip" % p
-            fn = os.path.join( fn1,fn2 )
+            fn = zipfile.ZipInfo( os.path.join( fn1,fn2 ), time.gmtime(os.path.getmtime(f))[:6] )
             if zfn not in zfs:
                 zfs[zfn] = zipfile.ZipFile(zfn,'a')
             if f.endswith(".gz"):
-                fn = fn.rpartition(".")[0]
+                fn.filename = fn.filename.rpartition(".")[0]
                 with gzip.open(f,"rb") as gzf:
                     buf = gzf.read()
             else:
                 with open(f,"rb") as fi:
                     buf = fi.read()
             try:
-                with zfs[zfn].open(fn,"r") as fi:
+                with zfs[zfn].open(fn.filename,"r") as fi:
                     same = fi.read() == buf
                 if not same:
-                    zfs[zfn].writestr(fn,buf)
-                    self.logger.info("%s -> %s : %s" % (f,zfn,fn))
+                    zfs[zfn].writestr( fn, buf )
+                    self.logger.info("%s -> %s : %s" % (f,zfn,fn.filename))
                 else:
                     self.logger.info("%s already in %s." % (f,zfn))
             except KeyError:
-                zfs[zfn].writestr(fn,buf)
-                self.logger.info("%s -> %s : %s" % (f,zfn,fn))
+                zfs[zfn].writestr( fn, buf )
+                self.logger.info("%s -> %s : %s" % (f,zfn,fn.filename))
             dellist.append(f)
             if len(zfs) > 3:
                 first = sorted(zfs.keys())[0]

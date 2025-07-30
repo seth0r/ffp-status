@@ -24,6 +24,8 @@ class Node(tsdb.Base):
     hw_model: Mapped[Optional[str]]
     hw_nproc: Mapped[Optional[int]]
 
+    domain: Mapped[Optional[str]]
+
     settings: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
 
     macaddrs: Mapped[List["MacAddr"]] = relationship(

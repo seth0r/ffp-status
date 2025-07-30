@@ -151,6 +151,8 @@ class TimescaleFeeder:
             if ni and "hardware" in ni:
                 node.hw_model = ni["hardware"].get("model")
                 node.hw_nproc = ni["hardware"].get("nproc")
+            if ni and "system" in ni and "domain_code" in ni["system"]:
+                node.domain = ni["system"]["domain_code"]
         if software and "autoupdater" in software and "firmware" in software:
             s = self.sess.get(tsdb.SwStat, {"nodeid":nid,"timestamp":t})
             if s and not s.compacted:

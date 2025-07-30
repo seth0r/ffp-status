@@ -64,6 +64,7 @@ services:
     networks:
       - "www"
       - "dbs"
+      - "ffp"
 
 
 networks:

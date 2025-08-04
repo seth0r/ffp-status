@@ -57,9 +57,15 @@ class Grafana:
     @cherrypy.expose
     def gf_ni(self,host):
         user = self.get_user()
-        node = self.mdb["nodes"].find_one({"host":host},sort=[("last_ts",-1)])
-        nexthop = self.mdb["nodes"].find_one({ "ifaddr":node.get("network",{}).get("nexthop",None) })
-        return self.serve_site("gf_ni", user = user, node = node, nexthop = nexthop )
+        with tsdb.getSess() as sess:
+            node = sess.execute( select(tsdb.Node)
+                .where(tsdb.Node.hostname == host)
+                .order_by(tsdb.Node.last_data.desc())
+            ).scalar()
+            if node and node.network:
+                nhmac = sess.get(tsdb.MacAddr, { "mac": node.network.get("nexthop",None) })
+                nexthop = nhmac.node if nhmac else None
+                return self.serve_site("gf_ni", user = user, node = node, nexthop = nexthop )
 
     @cherrypy.expose
     def gf_nodeoverview(self,host=None):

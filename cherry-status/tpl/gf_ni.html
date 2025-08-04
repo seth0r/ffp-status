@@ -12,21 +12,27 @@ body {
 
 {% block body %}
 <pre>
-<b>DO:</b> {{ node['system']['domain_code']|replace("_"," ")|title }}
+<b>DO:</b> {{ node.domain|replace("_"," ")|title }}
 
-{% if node.get('owner',{})['contact'] -%}
-    <b>OC:</b> {{ node['owner']['contact'] }}
+{% if node.owners|length > 0 -%}
+    <b>OC:</b>
+    {%- for o in node.owners -%}
+        {%- if not loop.first %}, {% endif -%}
+        {{ o.username }}
+    {%- endfor -%}
+{% elif user and node.contact -%}
+    <b>OC:</b> {{ node.contact }}
 {% endif %}
 
-<b>HW:</b> {{ node['hardware']['model'] }}
+<b>HW:</b> {{ node.hw_model }}
 
-<b>FW:</b> {{ node['software']['firmware']['release'] }} ({{ node['software']['autoupdater']['branch'] }}
-    {%- if not node['software']['autoupdater']['enabled'] %} disabled{% endif -%})
+<b>FW:</b> {{ node.software['firmware']['release'] }} ({{ node.software['autoupdater']['branch'] }}
+    {%- if not node.software['autoupdater']['enabled'] %} disabled{% endif -%})
 
 {% if nexthop -%}
-    <b>NH:</b> {{ nexthop['host'] }}
+    <b>NH:</b> {{ nexthop.hostname }}
 {%- else -%}
-    <b>GW:</b> {{ node['network']['mesh_vpn']['peers']|join(",") }}
+    <b>GW:</b> {{ node.network['mesh_vpn']['peers']|join(",") }}
 {% endif %}
 </pre>
 {% endblock %}

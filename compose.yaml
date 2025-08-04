@@ -23,7 +23,9 @@ services:
 
   cherry-status:
     container_name: ffp-status-cherry
-    build: cherry-status
+    build:
+      context: .
+      dockerfile: cherry-status.Dockerfile
     restart: unless-stopped
     mem_limit: "1g"
     env_file:
@@ -41,7 +43,9 @@ services:
 
   messagesender:
     container_name: ffp-messagesender
-    build: messagesender
+    build:
+      context: .
+      dockerfile: messagesender.Dockerfile
     restart: unless-stopped
     mem_limit: "1g"
     env_file:

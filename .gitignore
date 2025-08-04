@@ -1,9 +1,6 @@
-cherry-status/
 tmpstor/
 grafana/
 grafana.env
-messagesender/
 msgcfg.env
-swag/
 db.env
 tmpstor_*.tbz

@@ -54,6 +54,7 @@ services:
       - ./common.env
     networks:
       - "dbs"
+      - "ffp"
 
   grafana:
     container_name: ffp-grafana

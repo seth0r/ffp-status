@@ -1,5 +1,8 @@
 gunicorn
 cherrypy
+psycopg2-binary
+sqlalchemy-json
+sqlalchemy-timescaledb
 pymongo
 jinja2
 requests

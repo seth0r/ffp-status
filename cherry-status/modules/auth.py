@@ -2,10 +2,14 @@ import cherrypy
 from cherrypy._cperror import HTTPRedirect
 import os
 import time
+import datetime as dt
 import math
 import secrets
 import inspect
 import json
+from sqlalchemy import select,delete
+from sqlalchemy.sql.expression import func
+import tsdb
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 
@@ -49,49 +53,56 @@ class Auth:
         return False
 
     def _login(self,username,password):
-        user = self.mdb["users"].find_one({ "username":username, "active":True })
-        if user is not None and "pwhash" in user:
-            if self._check_password(user["pwhash"], bytes(password,"utf-8")):
-                sessid = secrets.token_hex()
-                s = { "sessid":sessid }
-                ph = PasswordHasher()
-                if ph.check_needs_rehash(user["pwhash"]):
-                    s["pwhash"] = ph.hash(bytes(password,"utf-8"))
-                self.mdb["users"].update_one({"_id":user["_id"]},{"$set":s, "$unset":{"pwtoken":True, "pwtokenexp":True}})
-                cookie = cherrypy.response.cookie
-                cookie['sessid'] = sessid
-                cookie['sessid']['path'] = '/'
-                cookie['sessid']['max-age'] = 24*60*60
-                cookie['sessid']['version'] = 1
-                return True
+        with tsdb.getSess() as sess:
+#            for u in self.mdb["users"].find():
+#                user = tsdb.User( username = u["username"], email = u["email"], pwhash = u["pwhash"] )
+#                sess.add(user)
+#            sess.commit()
+            user = sess.execute( select(tsdb.User)
+                .where(tsdb.User.username == username)
+                .where(tsdb.User.active == True)
+            ).scalar_one_or_none()
+            if user and user.pwhash:
+                if self._check_password(user.pwhash, bytes(password,"utf-8")):
+                    sessid = secrets.token_hex()
+                    ph = PasswordHasher()
+                    if ph.check_needs_rehash(user.pwhash):
+                        user.pwhash = ph.hash(bytes(password,"utf-8"))
+                    expire = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=1)
+                    user.sessions.append(tsdb.Session( sessid = sessid, expire = expire ))
+                    sess.commit()
+                    cookie = cherrypy.response.cookie
+                    cookie['sessid'] = sessid
+                    cookie['sessid']['path'] = '/'
+                    cookie['sessid']['max-age'] = 24*60*60
+                    cookie['sessid']['version'] = 1
+                    return True
         return False
 
     def _register(self,username,email,email_again, **kwargs):
-        if len(username) < 3:
-            return "username_to_short"
-        if not valid_username(username):
-            return "username_invalid"
-        if email != email_again:
-            return "email_nomatch"
-        if not valid_email(email):
-            return "email_invalid"
-        if self.mdb["users"].find_one({ "username":username }):
-            return "exists"
-        if self.mdb["users"].find_one({ "email":email }):
-            return "exists"
-        pwtoken = secrets.token_urlsafe(256)
-        user = {
-            "username": username,
-            "email": email,
-            "active": True,
-            "pwtoken": pwtoken,
-            "pwtokenexp": int(time.time()) + 24*60*60,
-            "mails":["pwinit"],
-        }
-        for k,v in kwargs.items():
-            if k in ["lang"]:
-                user[k] = v
-        self.mdb["users"].insert_one(user)
+        with tsdb.getSess() as sess:
+            if len(username) < 3:
+                return "username_to_short"
+            if not valid_username(username):
+                return "username_invalid"
+            if email != email_again:
+                return "email_nomatch"
+            if not valid_email(email):
+                return "email_invalid"
+            if sess.execute( select(tsdb.User).with_only_columns(func.count()).where(tsdb.User.username == username) ).scalar() > 0:
+                return "exists"
+            if sess.execute( select(tsdb.User).with_only_columns(func.count()).where(tsdb.User.email == email) ).scalar() > 0:
+                return "exists"
+            user = tsdb.User( username = username, email = email )
+            sess.add(user)
+            user.pwtoken = secrets.token_urlsafe(256)
+            user.pwtokenexpire = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days = 1)
+            user.mails = ["pwinit"]
+            user.settings = {}
+            for k,v in kwargs.items():
+                if k in ["lang"]:
+                    user.settings[k] = v
+            sess.commit()
         return True
 
     @cherrypy.expose
@@ -117,10 +128,18 @@ class Auth:
     def reset_password(self, username=None, email=None ):
         url = inspect.stack()[0][3]
         if cherrypy.request.method == "POST" and all([username, email]):
-            user = self.mdb["users"].find_one({ "username":username, "email":email, "active":True })
-            if user:
-                pwtoken = secrets.token_urlsafe(256)
-                self.mdb["users"].update_one({"_id":user["_id"]},{"$set":{"pwtoken":pwtoken, "pwtokenexp":int(time.time()) + 24*60*60},"$push":{"mails":"pwreset"}})
+            with tsdb.getSess() as sess:
+                sess.begin()
+                user = sess.execute( select(tsdb.User)
+                    .where(tsdb.User.username == username)
+                    .where(tsdb.User.email == email)
+                    .where(tsdb.User.active == True)
+                ).scalar_one_or_none()
+                if user:
+                    user.pwtoken = secrets.token_urlsafe(256)
+                    user.pwtokenexpire = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days = 1)
+                    user.mails.append("pwreset")
+                    sess.commit()
             return self.serve_site("auth/reset_password_next", url = url )
         return self.serve_site("auth/%s" % url, url = url )
 
@@ -129,16 +148,19 @@ class Auth:
         url = inspect.stack()[0][3]
         user = self.get_user()
         state = None
-        if user is not None and "pwhash" in user:
+        if user and user.pwhash:
             if cherrypy.request.method == "POST" and all([old_password, new_password, new_password_again]):
-                if new_password == new_password_again:
+                if new_password != new_password_again:
                     state = "pw_nomatch"
-                elif not self._check_password(user["pwhash"], bytes(old_password,"utf-8")):
+                elif not self._check_password(user.pwhash, bytes(old_password,"utf-8")):
                     state = "pw_failed"
                 else:
                     ph = PasswordHasher()
-                    h = ph.hash(bytes(new_password,"utf-8"))
-                    self.mdb["users"].update_one({"_id":user["_id"]},{"$set":{ "pwhash": h}})
+                    with tsdb.getSess() as sess:
+                        sess.begin()
+                        user = sess.get(tsdb.User, {"userid":user.userid})
+                        user.pwhash = ph.hash(bytes(new_password,"utf-8"))
+                        sess.commit()
                     raise HTTPRedirect(redirectto)
             return self.serve_site("auth/%s" % url, url = url, user = user, state = state, redirectto = redirectto)
         else:
@@ -149,22 +171,34 @@ class Auth:
         url = inspect.stack()[0][3]
         state = None
         if cherrypy.request.method == "POST" and all([password, password_again]):
-            user = self.mdb["users"].find_one({ "pwtoken":pwtoken, "pwtokenexp":{"$gte":time.time()}, "active":True })
-            if user:
-                if password == password_again:
-                    ph = PasswordHasher()
-                    h = ph.hash(bytes(password,"utf-8"))
-                    self.mdb["users"].update_one({"_id":user["_id"]},{"$set":{ "pwhash": h}, "$unset":{"pwtoken":True, "pwtokenexp":True}})
-                    raise HTTPRedirect(redirectto)
-                else:
-                    state = "pw_nomatch"
+            with tsdb.getSess() as sess:
+                sess.begin()
+                user = sess.execute( select(tsdb.User)
+                    .where(tsdb.User.active == True)
+                    .where(tsdb.User.pwtoken == pwtoken)
+                    .where(tsdb.User.pwtokenexpire >= dt.datetime.now(dt.timezone.utc))
+                ).scalar_one_or_none()
+                if user:
+                    if password == password_again:
+                        ph = PasswordHasher()
+                        user.pwhash = ph.hash(bytes(password,"utf-8"))
+                        user.pwtoken = None
+                        user.pwtokenexpire = None
+                        sess.commit()
+                        raise HTTPRedirect(redirectto)
+                    else:
+                        state = "pw_nomatch"
         return self.serve_site("auth/%s" % url, url = url, pwtoken = pwtoken, state = state, redirectto = redirectto)
 
     @cherrypy.expose
     def logout(self,redirectto="/"):
         if "sessid" in cherrypy.request.cookie:
             sessid = cherrypy.request.cookie["sessid"].value
-            self.mdb["users"].update_one({"sessid":sessid},{"$set":{"sessid":None}})
+            with tsdb.getSess() as sess:
+                s = sess.get(tsdb.Session, {"sessid":sessid})
+                if s:
+                    sess.delete(s)
+                    sess.commit()
             cookie = cherrypy.response.cookie
             cookie['sessid'] = ""
             cookie['sessid']['path'] = '/'
@@ -175,12 +209,15 @@ class Auth:
     def get_user(self):
         if "sessid" in cherrypy.request.cookie:
             sessid = cherrypy.request.cookie["sessid"].value
-            user = self.mdb["users"].find_one({"sessid":sessid})
-            if user is not None:
-                cookie = cherrypy.response.cookie
-                cookie['sessid'] = sessid
-                cookie['sessid']['path'] = '/'
-                cookie['sessid']['max-age'] = 24*60*60
-                cookie['sessid']['version'] = 1
-                return user
+            with tsdb.getSess() as sess:
+                res = sess.execute( delete(tsdb.Session).where(tsdb.Session.expire < dt.datetime.now(dt.timezone.utc)) )
+                sess.commit()
+                s = sess.get(tsdb.Session, {"sessid":sessid})
+                if s:
+                    cookie = cherrypy.response.cookie
+                    cookie['sessid'] = sessid
+                    cookie['sessid']['path'] = '/'
+                    cookie['sessid']['max-age'] = 24*60*60
+                    cookie['sessid']['version'] = 1
+                    return s.user
         return None

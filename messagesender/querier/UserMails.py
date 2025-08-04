@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
-from pymongo import MongoClient
-from collections import defaultdict
-import time
-import os
+from sqlalchemy import select,String
+import tsdb
 
 class UserMails:
     def __init__(self,logger):
         self.logger = logger
-        self.mdbe = MongoClient( os.getenv( "MONGODB_URI","mongodb://localhost/" ), connect = False )
-        self.mdb = self.mdbe[ os.getenv("MONGODB_DB")]
 
     def query(self):
-        for user in self.mdb["users"].find({"mails.0":{"$exists":True}}):
-            for mail in user["mails"]:
-                tpl,_,params = mail.partition(":")
-                params = params.split(":")
-                yield {
-                    "type":"Mail",
-                    "user":user,
-                    "mail":mail,
-                    "tpl":["user_%s.%s" % (tpl,user["lang"]),"user_%s" % tpl],
-                    "params":params,
-                    "receivers":[user["email"]],
-                }
+        with tsdb.getSess() as sess:
+            for user in sess.execute( select(tsdb.User)
+                .where(tsdb.User.active == True)
+                .where(tsdb.User.mails.cast(String) != "[]")
+            ).scalars():
+                for mail in user.mails:
+                    tpl,_,params = mail.partition(":")
+                    params = params.split(":")
+                    yield {
+                        "type":"Mail",
+                        "user":user,
+                        "mail":mail,
+                        "tpl":["user_%s.%s" % (tpl,user.settings["lang"]),"user_%s" % tpl],
+                        "params":params,
+                        "receivers":[user.email],
+                    }
 
     def ack_sent(self,msg):
-        self.mdb["users"].update_one({"_id":msg["user"]["_id"]},{"$pull":{"mails":msg["mail"]}})
+        with tsdb.getSess() as sess:
+            sess.begin()
+            user = sess.get(tsdb.User, {"userid":msg["user"].userid})
+            user.mails.remove(msg["mail"])
+            sess.commit()

@@ -1,6 +1,5 @@
 psycopg2-binary
 sqlalchemy-json
 sqlalchemy-timescaledb
-sympy
-pymongo
-influxdb-client
+jinja2
+requests

@@ -1,18 +1,31 @@
-FROM ubuntu:22.04
-MAINTAINER svenr@gfz-potsdam.de
+FROM python:3.11-bookworm
+MAINTAINER me+docker@seth0r.net
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
-RUN apt-get update 
+RUN apt-get update
 RUN apt-get dist-upgrade -y
-RUN apt-get -y install vim-nox python3-all python3-jinja2 python3-requests python3-pymongo
+RUN apt-get -y install vim-nox gpg wget gnupg2 curl procps python3-all
 
 ENV LOGLEVEL    INFO
 ENV TPLDIR      /srv/tpl
 
+WORKDIR /srv
+
+# venv
+ENV VIRTUAL_ENV=/code/venv
+
+# python setup
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# upgrade pip
+RUN pip install --upgrade pip
+
 COPY messagesender /srv
 COPY tsdb /srv/tsdb
-WORKDIR /srv
+
+RUN pip install -r requirements.txt
 
 CMD ["./msgsender.py"]

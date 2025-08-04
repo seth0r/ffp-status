@@ -3,6 +3,9 @@ from cherrypy._cperror import HTTPRedirect
 from cherrypy.lib.static import serve_fileobj, serve_file
 import os
 import requests
+from sqlalchemy import select,delete
+from sqlalchemy.sql.expression import func
+import tsdb
 
 class Grafana:
     @cherrypy.expose
@@ -14,8 +17,8 @@ class Grafana:
         for k,v in cherrypy.request.headers.items():
             headers[k] = v
         headers.update({
-            "X-WEBAUTH-USER":user["username"],
-            "X-WEBAUTH-EMAIL":user["email"],
+            "X-WEBAUTH-USER":user.username,
+            "X-WEBAUTH-EMAIL":user.email,
         })
         r = requests.get("http://grafana:3000/grafana/login", headers = headers, allow_redirects=False)
         cherrypy.response.status = r.status_code

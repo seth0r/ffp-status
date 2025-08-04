@@ -1,5 +1,7 @@
-from sqlalchemy_json import NestedMutableJson
+import datetime
+from sqlalchemy_json import MutableJson,NestedMutableJson
 from typing import List
+from typing import Optional
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import tsdb
 
@@ -9,7 +11,12 @@ class User(tsdb.Base):
     userid: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
     email: Mapped[str]
-    pwhash: Mapped[str]
+    active: Mapped[bool] = mapped_column( default=True )
+    pwhash: Mapped[Optional[str]]
+    pwtoken: Mapped[Optional[str]]
+    pwtokenexpire: Mapped[Optional[datetime.datetime]]
+
+    mails: Mapped[list] = mapped_column( MutableJson, default=list )
 
     settings: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
 

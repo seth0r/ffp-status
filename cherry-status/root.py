@@ -39,8 +39,8 @@ class Root( * modules.__classes__.values() ):
         user = None
         if hasattr(self,"get_user"):
             user = self.get_user()
-        if user and "lang" in user:
-            return user["lang"]
+        if user and user.settings and "lang" in user.settings:
+            return user.settings["lang"]
         else:
             return cherrypy.request.headers.get("Accept-Language","en")[:2]
 

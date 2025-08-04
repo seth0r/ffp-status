@@ -63,7 +63,7 @@ class Grafana:
 
     @cherrypy.expose
     def gf_nodeoverview(self,host=None):
-        gurl = "/grafana/d/b4a8cc56-8883-469d-ab4d-a96aecec6591/node-overview"
+        gurl = "/grafana/d/femn1dn9jbabke/node-overview"
         if host:
             raise HTTPRedirect( "%s?var-host=%s" % (gurl, host) )
         else:

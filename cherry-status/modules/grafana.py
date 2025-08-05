@@ -68,9 +68,10 @@ class Grafana:
                 return self.serve_site("gf_ni", user = user, node = node, nexthop = nexthop )
 
     @cherrypy.expose
-    def gf_nodeoverview(self,host=None):
+    def gf_nodeoverview(self,host=None,nid=None):
         gurl = "/grafana/d/femn1dn9jbabke/node-overview"
+        if host and nid:
+            raise HTTPRedirect( "%s?var-host=%s&var-nid=%s" % (gurl, host, nid) )
         if host:
             raise HTTPRedirect( "%s?var-host=%s" % (gurl, host) )
-        else:
-            raise HTTPRedirect( gurl )
+        raise HTTPRedirect( gurl )

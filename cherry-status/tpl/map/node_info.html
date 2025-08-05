@@ -1,34 +1,34 @@
 {% import 'helpers.tpl' as h %}
-<div class="container nodeinfo {{ color }}" id="{{ node['_id'] }}">
+<div class="container nodeinfo {{ color }}" id="{{ node.nodeid }}">
     <div class="row">
-        <div class="col-8 hostname">{{ node['host'] }}</div>
+        <div class="col-8 hostname">{{ node.hostname }}</div>
         <div class="col-4 grafanalink">
-            <a href="/gf_nodeoverview?host={{ node['host'] }}" target="_blank">
+            <a href="/gf_nodeoverview?host={{ node.hostname }}&nid={{ node.nid }}" target="_blank">
             <img src="/static/grafana.svg" title="Grafana" alt="Grafana" width="24px" height="24px"></a>
         </div>
     </div>
-    {% if node['offline'] is gt(0) %}
+    {% if offline is gt(0) %}
     <div class="row">
-        <div class="col offline">offline for {{ h.formatDuration( node['offline'] * 60*60 ) }}</div>
+        <div class="col offline">offline for {{ h.formatDuration( offline * 60*60 ) }}</div>
     </div>
-    {% else %}
+    {% elif node.uptime %}
     <div class="row">
         <div class="col">Uptime:</div>
-        <div class="col uptime jsClock">{{ h.jsClock( now, node['uptime'] + now - node['last_ts'], 60 ) }}</div>
+        <div class="col uptime jsClock">{{ h.jsClock( now.timestamp(), node.uptime + now.timestamp() - node.last_data.timestamp(), 60 ) }}</div>
     </div>
     {% endif %}
     <div class="row">
         <div class="col">Last data:</div>
-        <div class="col lastdata jsClock">{{ h.jsClock( now, now - node['last_ts'], 60 ) }} ago</div>
+        <div class="col lastdata jsClock">{{ h.jsClock( now.timestamp(), now.timestamp() - node.last_data.timestamp(), 60 ) }} ago</div>
     </div>
     <div class="row">
         <div class="col">Hardware:</div>
-        <div class="col hardware">{{ node['hardware']['model'] }}</div>
+        <div class="col hardware">{{ node.hw_model }}</div>
     </div>
     <div class="row">
         <div class="col">Addresses:</div>
         <div class="col address">
-        {% for a in node['network']['addresses']|sort %}
+        {% for a in node.network['addresses']|sort %}
             <a href="http://[{{ a }}]/" target="_blank">{{ a }}</a>
         {% endfor %}
         </div>
@@ -36,9 +36,9 @@
     <div class="row">
         <div class="col">Location:</div>
         <div class="col location">
-        {% if node['location'] %}
+        {% if node.loc_lon and node.loc_lat %}
             <a href="#zoom=17&lon={{ loc[0] }}&lat={{ loc[1] }}">@ {{ loc[0]|round(6) }} ; {{ loc[1]|round(6) }}</a>
-        {% elif node['location_guess'] %}
+        {% elif node.loc_guess_lon and node.loc_guess_lat %}
             <a href="#zoom=17&lon={{ loc[0] }}&lat={{ loc[1] }}">@ {{ loc[0]|round(6) }} ; {{ loc[1]|round(6) }}</a> (guessed)
         {% else %}
             <a href="#zoom=17&lon={{ loc[0] }}&lat={{ loc[1] }}">unknown</a>
@@ -48,30 +48,46 @@
     {% if nexthop %}
     <div class="row">
         <div class="col">Next hop:</div>
-        <div class="col nexthop">{{ nexthop['host'] }}</div>
+        <div class="col nexthop">{{ nexthop.hostname }}</div>
     </div>
     {% endif %}
-    {% if node.get('owner',{})['contact'] %}
+    {% if node.owners|length > 0 %}
     <div class="row">
         <div class="col">Contact:</div>
-        <div class="col contact">{{ node['owner']['contact'] }}</div>
+        <div class="col contact">
+        {%- for o in node.owners -%}
+            {%- if not loop.first %}, {% endif -%}
+            {{- o.username -}}
+        {%- endfor -%}
+        </div>
+    </div>
+    {% elif user and node.contact -%}
+    <div class="row">
+        <div class="col">Contact:</div>
+        <div class="col contact">{{ node.contact }}</div>
     </div>
     {% endif %}
+    {% if node.software.get('firmware') %}
     <div class="row">
         <div class="col">Firmware base:</div>
-        <div class="col firmware">{{ node['software']['firmware']['base'] }}</div>
+        <div class="col firmware">{{ node.software['firmware']['base'] }}</div>
     </div>
     <div class="row">
         <div class="col">Firmware release:</div>
-        <div class="col firmware">{{ node['software']['firmware']['release'] }}</div>
+        <div class="col firmware">{{ node.software['firmware']['release'] }}</div>
     </div>
+    {% endif %}
+    {% if node.software.get('ffpcollect') %}
     <div class="row">
         <div class="col">FFP-collect version:</div>
-        <div class="col firmware">{{ node['software']['ffpcollect'] }}</div>
+        <div class="col firmware">{{ node.software['ffpcollect'] }}</div>
     </div>
+    {% endif %}
+    {% if node.software.get('autoupdater') %}
     <div class="row">
         <div class="col">Autoupdater:</div>
-        <div class="col autoupdater">{{ node['software']['autoupdater']['branch'] }}
-        {% if not node['software']['autoupdater']['enabled'] %}(disabled){% endif %}</div>
+        <div class="col autoupdater">{{ node.software['autoupdater']['branch'] }}
+        {% if not node.software['autoupdater']['enabled'] %}(disabled){% endif %}</div>
     </div>
+    {% endif %}
 </div>

@@ -2,9 +2,9 @@
 {% set l = link["l"] %}
 {% set r = link["r"] %}
 {% macro format_stat(stat) %}
-    <span class="tq">{{ (stat['tq'] / 2.55)|round|int }} %</span>
-    {% if stat['signal'] is number and stat['noise'] is number %}<span class="snr">({{ stat['signal'] - stat['noise'] }} dBm)</span>{% endif %}
-    {% if stat['lastseen'] is gt( 1200 ) %}<span class="lastseen"> vor {{ h.formatDuration( stat['lastseen'], 60 ) }}</span>{% endif %}
+    <span class="tq">{{ (stat.tq / 2.55)|round|int }} %</span>
+    {% if stat.signal is number and stat.noise is number %}<span class="snr">({{ stat.signal - stat.noise }} dBm)</span>{% endif %}
+    {% if stat.lastseen is gt( 1200 ) %}<span class="lastseen"> vor {{ h.formatDuration( stat.lastseen, 60 ) }}</span>{% endif %}
 {% endmacro %}
 <div class="container linkinfo" id="{{ link['link_id'] }}">
     <div class="row header">

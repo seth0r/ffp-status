@@ -176,4 +176,4 @@ window.setInterval(function () {
         layer_nodes.getSource().refresh();
         layer_links.getSource().refresh();
     }
-}, 60000);
+}, 300000);

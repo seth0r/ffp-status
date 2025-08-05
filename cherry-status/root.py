@@ -5,6 +5,7 @@ from cherrypy.lib.static import serve_fileobj, serve_file
 import jinja2
 from pymongo import MongoClient
 import os
+import time
 
 import modules
 
@@ -13,13 +14,26 @@ class Root( * modules.__classes__.values() ):
         self.mdbe = MongoClient( os.getenv( "MONGODB_URI","mongodb://localhost/" ), connect = False )
         self.mdb = self.mdbe[ os.getenv("MONGODB_DB") ]
 
+        self.tmpdir = "/tmp"
         self.tpldir = os.path.join( os.path.dirname(os.path.realpath(__file__) ),"tpl")
         self.tplenv = jinja2.Environment( 
             loader = jinja2.FileSystemLoader( self.tpldir ),
             trim_blocks = True,
             lstrip_blocks = True
         )
-        
+
+    def cache(self,name,fnk,args=(),cachetime=60*60):
+        name = "_".join([name] + list(args))
+        fp = os.path.join(self.tmpdir,name)
+        if os.path.isfile( fp ) and os.path.getmtime(fp) > time.time() - cachetime:
+            with open(fp,"rb") as f:
+                return f.read()
+        else:
+            with open(fp,"wb") as f:
+                res = bytes(fnk(*args))
+                f.write(res)
+                return res
+
     def get_tpl(self, *args):
         for t in args:
             try:

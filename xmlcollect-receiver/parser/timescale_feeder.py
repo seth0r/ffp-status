@@ -189,7 +189,26 @@ class TimescaleFeeder:
                     mac = lmac,
                     remotemac = rmac,
                     timestamp = t )
-                if l:
+                if lh:
+                    lh.tq = attrs["tq"]
+                    lh.lastseen = attrs["lastseen"]
+                    lh.best = attrs["best"]
+                l = self.sess.get(tsdb.Link, {
+                    "nodeid" : lnode.nodeid,
+                    "remotenodeid" : rnode.nodeid,
+                    "mac" : lmac,
+                    "remotemac" : rmac,
+                })
+                if not l:
+                    l = tsdb.Link(
+                        nodeid = lnode.nodeid,
+                        remotenodeid = rnode.nodeid,
+                        mac = lmac,
+                        remotemac = rmac
+                    )
+                    self.sess.add(l)
+                if not l.last_data or t > l.last_data:
+                    l.last_data = t
                     l.tq = attrs["tq"]
                     l.lastseen = attrs["lastseen"]
                     l.best = attrs["best"]

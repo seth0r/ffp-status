@@ -178,7 +178,7 @@ class TimescaleFeeder:
                 if rmacobj is None:
                     continue
                 rnode = rmacobj.node
-                l = self.query_Stat( tsdb.Link,
+                lh = self.query_Stat( tsdb.LinkHist,
                     nodeid = lnode.nodeid,
                     remotenodeid = rnode.nodeid,
                     mac = lmac,

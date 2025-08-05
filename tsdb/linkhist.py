@@ -6,19 +6,14 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import Mapped, mapped_column
 import tsdb
 
-class Link(tsdb.Base):
-    __tablename__ = "links"
-
-    nodeid: Mapped[str]       = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
+class LinkHist(tsdb.Stat,tsdb.Base):
     remotenodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
-    mac: Mapped[str]          = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
-    remotemac: Mapped[str]    = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
-
-    last_data: Mapped[datetime.datetime]
+    mac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
+    remotemac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
 
     tq:       Mapped[int] = mapped_column( SmallInteger )
     lastseen: Mapped[float] = mapped_column( REAL )
     best:     Mapped[bool]
 
-    node = relationship("Node", foreign_keys=[nodeid])
+    node = relationship("Node", foreign_keys="[LinkHist.nodeid]")
     remotenode = relationship("Node", foreign_keys=[remotenodeid])

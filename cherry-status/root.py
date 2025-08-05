@@ -3,7 +3,6 @@ from cherrypy import HTTPError
 from cherrypy._cperror import HTTPRedirect
 from cherrypy.lib.static import serve_fileobj, serve_file
 import jinja2
-from pymongo import MongoClient
 import os
 import time
 
@@ -11,9 +10,6 @@ import modules
 
 class Root( * modules.__classes__.values() ):
     def __init__(self):
-        self.mdbe = MongoClient( os.getenv( "MONGODB_URI","mongodb://localhost/" ), connect = False )
-        self.mdb = self.mdbe[ os.getenv("MONGODB_DB") ]
-
         self.tmpdir = "/tmp"
         self.tpldir = os.path.join( os.path.dirname(os.path.realpath(__file__) ),"tpl")
         self.tplenv = jinja2.Environment( 

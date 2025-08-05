@@ -54,10 +54,6 @@ class Auth:
 
     def _login(self,username,password):
         with tsdb.getSess() as sess:
-#            for u in self.mdb["users"].find():
-#                user = tsdb.User( username = u["username"], email = u["email"], pwhash = u["pwhash"] )
-#                sess.add(user)
-#            sess.commit()
             user = sess.execute( select(tsdb.User)
                 .where(tsdb.User.username == username)
                 .where(tsdb.User.active == True)

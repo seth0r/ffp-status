@@ -19,10 +19,12 @@ body {
     {%- for o in node.owners -%}
         {%- if not loop.first %}, {% endif -%}
         {{ o.username }}
-    {%- endfor -%}
+    {%- endfor %}
+
 {% elif user and node.contact -%}
     <b>OC:</b> {{ node.contact }}
-{% endif %}
+
+{% endif -%}
 
 <b>HW:</b> {{ node.hw_model }}
 

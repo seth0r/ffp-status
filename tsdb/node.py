@@ -2,7 +2,7 @@ import datetime
 from sqlalchemy_json import NestedMutableJson
 from typing import List
 from typing import Optional
-from sqlalchemy import String
+from sqlalchemy import String, REAL
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import tsdb
 
@@ -20,6 +20,7 @@ class Node(tsdb.Base):
     last_contact_update: Mapped[Optional[datetime.datetime]]
     network: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
     software: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
+    uptime: Mapped[Optional[float]] = mapped_column( REAL )
 
     hw_model: Mapped[Optional[str]]
     hw_nproc: Mapped[Optional[int]]

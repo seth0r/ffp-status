@@ -5,7 +5,7 @@ import tsdb
 class MacAddr(tsdb.Base):
     __tablename__ = "macaddrs"
 
-    nodeid: Mapped[str] = mapped_column( ForeignKey("nodes.nodeid", ondelete="CASCADE") )
+    nodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE") )
     mac: Mapped[str] = mapped_column( String(17), primary_key=True )
 
     node: Mapped["Node"] = relationship(back_populates="macaddrs")

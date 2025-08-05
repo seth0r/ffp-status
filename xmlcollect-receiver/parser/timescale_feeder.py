@@ -100,12 +100,15 @@ class TimescaleFeeder:
         software = None
         loc = None
         contact = False
+        uptime = None
         if "nodeinfo" in res and "routes" in res:
             ni = copy.deepcopy( res["nodeinfo"] )
             stat = res.get("statistics",{})
 
             contact = ni.get("owner",{}).get("contact",None)
             loc = ni.get("location",{})
+
+            uptime = stat.get("uptime",None)
 
             ni["software"]["ffpcollect"] = res.get("scriptver",None)
             software = ni["software"]
@@ -140,6 +143,8 @@ class TimescaleFeeder:
             if loc is not None:
                 node.loc_lon = loc.get("longitude")
                 node.loc_lat = loc.get("latitude")
+            if uptime:
+                node.uptime = uptime
             if len(macaddrs) > 0:
                 node.macaddrs = []
                 for mac in macaddrs:

@@ -1,10 +1,11 @@
 from base import Process
 import os
-import time
+import datetime as dt
 import math
 import random
 from collections import defaultdict
-from pymongo import MongoClient
+from sqlalchemy import select, or_, and_
+import tsdb
 from sympy import symbols, solve, solve_poly_system, Eq
 
 def haversine(lon1, lat1, lon2, lat2):
@@ -19,24 +20,33 @@ def haversine(lon1, lat1, lon2, lat2):
 class LocationGuesser(Process):
     INTERVAL = 3600
     def run(self):
-        self.mdbe = MongoClient( os.getenv( "MONGODB_URI","mongodb://localhost/" ) )
-        self.mdb = self.mdbe[os.getenv("MONGODB_DB")]
-        now = time.time()
-        for node in self.mdb["nodes"].find({"location":{"$exists":False},"last_ts":{"$gte":now - 24*60*60}}):
-            random.seed(node["_id"])
+        sess = tsdb.getSess()
+        now = dt.datetime.now( dt.timezone.utc )
+        t = now - dt.timedelta( days = 1 )
+        for node in sess.execute( select( tsdb.Node ).where( and_(
+            tsdb.Node.last_data >= t,
+            or_( tsdb.Node.loc_lon == None, tsdb.Node.loc_lat == None )
+        ))).scalars():
+            random.seed(node.nodeid)
             for h in range(1,25):
                 neigh = {}
                 ntqs = defaultdict(list)
-                for l in self.mdb["neighbours"].find({ "local":{"$in":node["ifaddr"]}, "time":{"$gte":now - h*60*60}, "stat.tq":{"$gt":0} }):
-                    n = self.mdb["nodes"].find_one({ "ifaddr":l["remote"], "location":{"$exists":True}, "last_ts":{"$gte":now - 24*60*60} })
-                    if n:
-                        neigh[ n["_id"] ] = n
-                        ntqs[ n["_id"] ].append( l["stat"]["tq"] / 255 )
-                for l in self.mdb["neighbours"].find({ "remote":{"$in":node["ifaddr"]}, "time":{"$gte":now - h*60*60}, "stat.tq":{"$gt":0} }):
-                    n = self.mdb["nodes"].find_one({ "ifaddr":l["local"], "location":{"$exists":True}, "last_ts":{"$gte":now - 24*60*60} })
-                    if n:
-                        neigh[ n["_id"] ] = n
-                        ntqs[ n["_id"] ].append( l["stat"]["tq"] / 255 )
+                for l in sess.execute( select( tsdb.Link )
+                    .where(tsdb.Link.nodeid == node.nodeid)
+                    .where(tsdb.Link.tq > 0)
+                    .where(tsdb.Link.last_data >= now - dt.timedelta(hours = h))
+                ).scalars():
+                    if l.remotenode.loc_lon and l.remotenode.loc_lat:
+                        neigh[ l.remotenodeid ] = l.remotenode
+                        ntqs[  l.remotenodeid ].append( l.tq / 255 )
+                for l in sess.execute( select( tsdb.Link )
+                    .where(tsdb.Link.remotenodeid == node.nodeid)
+                    .where(tsdb.Link.tq > 0)
+                    .where(tsdb.Link.last_data >= now - dt.timedelta(hours = h))
+                ).scalars():
+                    if l.node.loc_lon and l.node.loc_lat:
+                        neigh[ l.nodeid ] = l.node
+                        ntqs[  l.nodeid ].append( l.tq / 255 )
                 if len(neigh) >= 3:
                     break
             if len(neigh) == 0:
@@ -44,13 +54,15 @@ class LocationGuesser(Process):
             for nid,tqs in list(ntqs.items()):
                 ntqs[nid] = sum(tqs) / len(tqs)
             ntqs = sorted( ntqs.items(), key=lambda ntq: ntq[1], reverse=True )
-            self.logger.info("%s has %d neighbours.", node["host"], len(neigh) )
+            self.logger.info("%s has %d neighbours.", node.hostname, len(neigh) )
             for nid,tq in ntqs:
-                self.logger.info("  %s: %f using %f as pseudo distance", neigh[nid]['host'], tq, 1 / (tq**2) )
+                self.logger.info("  %s: %f using %f as pseudo distance", neigh[nid].hostname, tq, 1 / (tq**2) )
             x,y = self.guess_location( neigh, ntqs )
             if x and y:
-                self.mdb["node_settings"].update_one({"_id":node["_id"]},{"$set":{"location_guess":[x,y]}},upsert=True)
-                self.logger.info("  Guessed location of %s: %f : %f", node["host"], x, y)
+                node.loc_guess_lon = x
+                node.loc_guess_lat = y
+                sess.commit()
+                self.logger.info("  Guessed location of %s: %f : %f", node.hostname, x, y)
 
     def guess_location(self, neigh, ntqs ):
         try:
@@ -73,8 +85,8 @@ class LocationGuesser(Process):
         x,y,f = symbols('x y f', real=True)
         eqs = []
         for nid,tq in tqs[:3]:
-            xn = int(neighbours[nid]["location"][0]*1000000)
-            yn = int(neighbours[nid]["location"][1]*1000000)
+            xn = int(neighbours[nid].loc_lon*1000000)
+            yn = int(neighbours[nid].loc_lat*1000000)
             d = int(1/(tq**2)*1000000)
             eqs.append( Eq( (x-xn)**2 + (y-yn)**2, (f*d)**2 ) )
         res = solve(eqs, (x, y, f))
@@ -84,12 +96,12 @@ class LocationGuesser(Process):
 
     def bilaterate_rnd(self, neighbours, tqs):
         x,y,f = symbols('x y f', real=True)
-        x1 = int(neighbours[tqs[0][0]]["location"][0]*1000000)
-        y1 = int(neighbours[tqs[0][0]]["location"][1]*1000000)
-        d1 = int(1/(tqs[0][1]**2)*1000000)
-        x2 = int(neighbours[tqs[1][0]]["location"][0]*1000000)
-        y2 = int(neighbours[tqs[1][0]]["location"][1]*1000000)
-        d2 = int(1/(tqs[1][1]**2)*1000000)
+        x1 = int(neighbours[ tqs[0][0] ].loc_lon * 1000000)
+        y1 = int(neighbours[ tqs[0][0] ].loc_lat * 1000000)
+        d1 = int( 1 / ( tqs[0][1] ** 2 ) * 1000000 )
+        x2 = int(neighbours[ tqs[1][0] ].loc_lon * 1000000)
+        y2 = int(neighbours[ tqs[1][0] ].loc_lat * 1000000)
+        d2 = int( 1 / ( tqs[1][1] ** 2 ) * 1000000 )
         minf = (((x1 - x2)**2 + (y1-y2)**2)**0.5) / (d1 + d2)
         maxf = (((x1 - x2)**2 + (y1-y2)**2)**0.5) / abs(d1 - d2)
         eq1 = Eq( (x-x1)**2 + (y-y1)**2, (f*d1)**2 )
@@ -102,6 +114,6 @@ class LocationGuesser(Process):
         return float(xv)/1000000,float(yv)/1000000
 
     def near_rnd(self, neighbours, tqs):
-        x = neighbours[tqs[0][0]]["location"][0] - 0.001 + random.random() * 0.002
-        y = neighbours[tqs[0][0]]["location"][1] - 0.001 + random.random() * 0.002
+        x = neighbours[tqs[0][0]].loc_lon - 0.001 + random.random() * 0.002
+        y = neighbours[tqs[0][0]].loc_lat - 0.001 + random.random() * 0.002
         return x,y

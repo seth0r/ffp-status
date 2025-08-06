@@ -14,7 +14,7 @@ class Link(tsdb.Base):
     mac: Mapped[str]          = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
     remotemac: Mapped[str]    = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
 
-    last_data: Mapped[datetime.datetime]
+    last_data: Mapped[datetime.datetime] = mapped_column( index=True )
 
     tq:       Mapped[int] = mapped_column( SmallInteger )
     lastseen: Mapped[float] = mapped_column( REAL )

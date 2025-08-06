@@ -11,7 +11,7 @@ class Node(tsdb.Base):
 
     nodeid: Mapped[str] = mapped_column( String(12), primary_key=True )
     hostname: Mapped[str]
-    last_data: Mapped[datetime.datetime]
+    last_data: Mapped[datetime.datetime] = mapped_column( index=True )
     loc_lon: Mapped[Optional[float]]
     loc_lat: Mapped[Optional[float]]
     loc_guess_lon: Mapped[Optional[float]]

@@ -22,7 +22,7 @@ class defdict(defaultdict):
                 res[k] = v
         return res
 
-class Parser( Process, parser.ffgParser, parser.InfluxFeeder, parser.MongoFeeder, parser.TimescaleFeeder ):
+class Parser( Process, parser.ffgParser, parser.TimescaleFeeder ):
     BATCHSIZE = 1000        # split into smaller batches of this many files
     MAXAGE = 35*24*60*60    # max age of files to parse
     HISTAGE = 30*24*60*60   # age of a file when it is considered historical and the above limit is ignored

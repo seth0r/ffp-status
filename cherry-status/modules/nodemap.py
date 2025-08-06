@@ -7,6 +7,7 @@ import datetime as dt
 import math
 import random
 import json
+from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.orm.session import Session
@@ -96,13 +97,6 @@ class NodeMap:
     @cherrypy.expose
     def nodes_geojson(self, max_offline_days = 100):
         user = self.get_user()
-        if user:
-            return self.make_nodes_geojson( max_offline_days )
-        else:
-            return self.cache("nodes_geojson",self.make_nodes_geojson,(max_offline_days,), cachetime=120)
-
-    def make_nodes_geojson(self, max_offline_days ):
-        user = self.get_user()
         gjs = { "type": "FeatureCollection","features": [] }
         
         with tsdb.getSess() as sess:
@@ -117,56 +111,45 @@ class NodeMap:
         cherrypy.response.headers['Content-Type'] = 'application/json'
         return bytes(json.dumps(gjs),"utf-8")
 
-    def get_link_stats(self,thisnode,othernode, now):
-        sess = Session.object_session(thisnode)
+    def get_link_stats(self,thisnode,othernode, alllinks):
         links = []
-        for l in sess.execute( select(tsdb.Link)
-            .where(tsdb.Link.nodeid == thisnode.nodeid)
-            .where(tsdb.Link.remotenodeid == othernode.nodeid)
-            .where(tsdb.Link.last_data >= now - dt.timedelta(days = 1))
-            .where(tsdb.Link.tq > 0)
-        ).scalars():
-            sess.expunge(l)
-            l.lastseen += now.timestamp() - l.last_data.timestamp()
-            l.kind = getkindofaddr( l.mac )
-            rl = sess.execute( select(tsdb.Link)
-                .where(tsdb.Link.nodeid == l.remotenodeid)
-                .where(tsdb.Link.remotenodeid == l.nodeid)
-                .where(tsdb.Link.mac == l.remotemac)
-                .where(tsdb.Link.remotemac == l.mac)
-                .where(tsdb.Link.last_data >= now - dt.timedelta(days = 1))
-                .where(tsdb.Link.tq > 0)
-            ).scalar_one_or_none()
-            if rl:
-                sess.expunge(rl)
-                rl.lastseen += now.timestamp() - rl.last_data.timestamp()
-                rl.kind = getkindofaddr( rl.mac )
-            links.append((l,rl))
+        for ll in alllinks[ (thisnode.nodeid,othernode.nodeid) ]:
+            rl = None
+            for l in alllinks[ (othernode.nodeid,thisnode.nodeid) ]:
+                if ll.mac == l.remotemac and ll.remotemac == l.mac:
+                    rl = l
+                    break
+            links.append((ll,rl))
         links.sort( key = lambda x: x[0].tq, reverse = True )
         return links
 
     def get_links(self):
         now = dt.datetime.now(dt.timezone.utc)
-        alllinks = []
+        t = now - dt.timedelta(days = 1)
         with tsdb.getSess() as sess:
-            for (nid,rnid) in sess.execute( select(tsdb.Link.nodeid,tsdb.Link.remotenodeid)
-                .distinct()
-                .where(tsdb.Link.last_data >= now - dt.timedelta(days = 1))
+            nodes = {}
+            for n in sess.execute( select(tsdb.Node).where(tsdb.Node.last_data >= t) ).scalars():
+                nodes[ n.nodeid ] = n
+            dblinks = list( sess.execute( select(tsdb.Link)
+                .where(tsdb.Link.last_data >= t)
                 .where(tsdb.Link.tq > 0)
-            ):
-                thisnode = sess.get(tsdb.Node, {"nodeid":nid})
-                othernode = sess.get(tsdb.Node, {"nodeid":rnid})
+            ).scalars() )
+            sess.close()
+            alllinks = defaultdict(list)
+            for l in dblinks:
+                l.lastseen += now.timestamp() - l.last_data.timestamp()
+                l.kind = getkindofaddr( l.mac )
+                alllinks[ (l.nodeid,l.remotenodeid) ].append(l)
+            for (nid,rnid) in list(alllinks.keys()):
+                thisnode = nodes.get( nid )
+                othernode = nodes.get( rnid )
                 if None in [thisnode,othernode]:
                     continue
-                ids = (nid,rnid)
-                if ids in alllinks:
-                    continue
-                alllinks.append(ids)
                 thisloc  = getnodeloc(thisnode)
                 otherloc = getnodeloc(othernode)
-                stats = self.get_link_stats( thisnode, othernode, now )
+                stats = self.get_link_stats( thisnode, othernode, alllinks )
                 res = {
-                    "link_id": "%s_%s" % ids,
+                    "link_id": "%s_%s" % (nid,rnid),
                     "nodes": [thisnode,othernode],
                     "stats": stats,
                 }
@@ -212,9 +195,6 @@ class NodeMap:
 
     @cherrypy.expose
     def links_geojson(self):
-        return self.cache("links_geojson",self.make_links_geojson, cachetime=300)
-
-    def make_links_geojson(self):
         gjs = { "type": "FeatureCollection","features": [] }
 
         for l in self.get_links():

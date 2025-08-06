@@ -18,18 +18,6 @@ class Root( * modules.__classes__.values() ):
             lstrip_blocks = True
         )
 
-    def cache(self,name,fnk,args=(),cachetime=60*60):
-        name = "_".join([ name ] + [ str(a) for a in args ])
-        fp = os.path.join(self.tmpdir,name)
-        if os.path.isfile( fp ) and os.path.getmtime(fp) > time.time() - cachetime:
-            with open(fp,"rb") as f:
-                return f.read()
-        else:
-            with open(fp,"wb") as f:
-                res = bytes(fnk(*args))
-                f.write(res)
-                return res
-
     def get_tpl(self, *args):
         for t in args:
             try:

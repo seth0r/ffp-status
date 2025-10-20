@@ -101,7 +101,7 @@ class NodeMap:
         
         with tsdb.getSess() as sess:
             for n in sess.execute( select(tsdb.Node)
-                .where(tsdb.Node.last_data >= dt.datetime.now(dt.timezone.utc) - dt.timedelta(days = max_offline_days))
+                .where(tsdb.Node.last_data >= dt.datetime.now(dt.timezone.utc) - dt.timedelta(days = int(max_offline_days)))
                 .order_by(tsdb.Node.last_data.desc())
             ).scalars():
                 f = self.node2gjs( n, user )

@@ -10,13 +10,12 @@ class TimescaleFeeder:
         self.times = None
 
     def query_Stat(self, stat, **kwargs):
+        kwargs["compacted"] = False
         if self.times and stat.__name__ in self.times:
             ts = kwargs["timestamp"]
             s = None
             if ts in self.times[ stat.__name__ ]:
                 s = self.sess.get(stat, kwargs)
-                if s and not s.compacted:
-                    return
             if not s:
                 self.times[ stat.__name__ ].add(ts)
                 s = stat( **kwargs )
@@ -26,9 +25,6 @@ class TimescaleFeeder:
             if not s:
                 s = stat( **kwargs )
                 self.sess.add(s)
-            elif not s.compacted:
-                return
-        s.compacted = False
         return s
 
     def preprocess(self, host, files):
@@ -159,13 +155,12 @@ class TimescaleFeeder:
             if ni and "system" in ni and "domain_code" in ni["system"]:
                 node.domain = ni["system"]["domain_code"]
         if software and "autoupdater" in software and "firmware" in software:
-            s = self.sess.get(tsdb.SwStat, {"nodeid":nid,"timestamp":t})
-            if s and not s.compacted:
+            s = self.sess.get(tsdb.SwStat, {"nodeid":nid,"timestamp":t,"compacted":False})
+            if s:
                 return
             elif not s:
-                s = tsdb.SwStat( nodeid=nid, timestamp=t )
+                s = tsdb.SwStat( nodeid=nid, timestamp=t, compacted=False )
                 self.sess.add(s)
-            s.compacted = False
             s.domain = ni["system"]["domain_code"]
             s.au_branch = software["autoupdater"]["branch"]
             s.au_enabled = software["autoupdater"]["enabled"]

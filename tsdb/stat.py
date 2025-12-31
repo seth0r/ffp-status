@@ -17,7 +17,7 @@ class Stat:
     timestamp = Column(
         DateTime(), default=datetime.datetime.now, primary_key=True
     )
-    compacted: Mapped[bool] = mapped_column( default=False )
+    compacted: Mapped[bool] = mapped_column( default=False, primary_key=True )
     
     @declared_attr
     def nodeid(cls):

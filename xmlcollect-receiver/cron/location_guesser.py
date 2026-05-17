@@ -50,6 +50,10 @@ class LocationGuesser(Process):
                 if len(neigh) >= 3:
                     break
             if len(neigh) == 0:
+                node.loc_guess_lon = None
+                node.loc_guess_lat = None
+                sess.commit()
+                self.logger.info("  No guessed location of %s.", node.hostname)
                 continue
             for nid,tqs in list(ntqs.items()):
                 ntqs[nid] = sum(tqs) / len(tqs)

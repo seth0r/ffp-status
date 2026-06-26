@@ -22,6 +22,10 @@
         <div class="col lastdata jsClock">{{ h.jsClock( now.timestamp(), now.timestamp() - node.last_data.timestamp(), 60 ) }} ago</div>
     </div>
     <div class="row">
+        <div class="col">Domain:</div>
+        <div class="col domain">{{ node.domain_name() }}</div>
+    </div>
+    <div class="row">
         <div class="col">Hardware:</div>
         <div class="col hardware">{{ node.hw_model }}</div>
     </div>

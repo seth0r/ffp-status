@@ -6,6 +6,48 @@ from sqlalchemy import String, REAL
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import tsdb
 
+domain_map = {
+    "pdm_bbgnord_nosae"     : 'Potsdam - Babelsberg Nord',
+    "pdm_bbgsued_nosae"     : 'Potsdam - Babensberg Sued',
+    "pdm_blnvst_nosae"      : 'Potsdam - Berliner Vorstadt',
+    "pdm_bornim_nosae"      : 'Potsdam - Bornim',
+    "pdm_bornstedt_nosae"   : 'Potsdam - Bornstedt',
+    "pdm_brbvst_nosae"      : 'Potsdam - Brandenburger Vorstadt',
+    "pdm_drewitz_nosae"     : 'Potsdam - Drewitz',
+    "pdm_eiche_nosae"       : 'Potsdam - Eiche',
+    "pdm_fahrland_nosae"    : 'Potsdam - Fahrland',
+    "pdm_golm_nosae"        : 'Potsdam - Golm',
+    "pdm_grglien_nosae"     : 'Potsdam - Gross Glienicke',
+    "pdm_grube_nosae"       : 'Potsdam - Grube',
+    "pdm_hbf_brau_nosae"    : 'Potsdam - Hauptbahnhof und Brauhausberg Nord',
+    "pdm_hist_nosae"        : 'Potsdam - Historische Innenstadt',
+    "pdm_jagvst_nosae"      : 'Potsdam - Jaegervorstadt',
+    "pdm_kirchsteig_nosae"  : 'Potsdam - Kirchsteigfeld',
+    "pdm_klglien_nosae"     : 'Potsdam - Klein Glienicke',
+    "pdm_marquardt_nosae"   : 'Potsdam - Marquardt',
+    "pdm_nauvst_nosae"      : 'Potsdam - Nauener Vorstadt',
+    "pdm_nedlitz_nosae"     : 'Potsdam - Nedlitz',
+    "pdm_neufahrland_nosae" : 'Potsdam - Neu Fahrland',
+    "pdm_pdmwest_nosae"     : 'Potsdam - Potsdam West',
+    "pdm_sacrow_nosae"      : 'Potsdam - Sacrow',
+    "pdm_satzkorn_nosae"    : 'Potsdam - Satzkorn',
+    "pdm_schlaatz_nosae"    : 'Potsdam - Schlaatz',
+    "pdm_stern_nosae"       : 'Potsdam - Stern',
+    "pdm_teltvst_nosae"     : 'Potsdam - Teltower Vorstadt',
+    "pdm_tempvst_nosae"     : 'Potsdam - Templiner Vorstadt',
+    "pdm_uetz_paaren_nosae" : 'Potsdam - Uetz-Paaren',
+    "pdm_waldstadt1_nosae"  : 'Potsdam - Waldstadt I und Industriegelaende',
+    "pdm_waldstadt2_nosae"  : 'Potsdam - Waldstadt II',
+    "pdm_zo_nuth_nosae"     : 'Potsdam - Zentrum Ost und Nuthepark',
+
+    "umland_hvl_nosae"      : 'Umland - Havelland',
+    "umland_pm_nosae"       : 'Umland - Potsdam-Mittelmark',
+    "umland_tf_nosae"       : 'Umland - Teltow-Flaeming',
+
+    "potsdam_nosae"         : 'Potsdam',
+    "potsdam_umland_nosae"  : 'Potsdam Umland',
+}
+
 class Node(tsdb.Base):
     __tablename__ = "nodes"
 
@@ -26,6 +68,9 @@ class Node(tsdb.Base):
     hw_nproc: Mapped[Optional[int]]
 
     domain: Mapped[Optional[str]]
+
+    def domain_name(self):
+        return domain_map.get(self.domain,self.domain)
 
     settings: Mapped[dict] = mapped_column( NestedMutableJson, default=dict )
 

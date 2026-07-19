@@ -23,6 +23,7 @@ loghandlers = [
     logging.StreamHandler( stream = sys.stdout )
 ]
 logging.basicConfig( level = loglevel, format = logformat, handlers = loghandlers )
+logger = logging.getLogger("main")
 
 TMPSTOR = os.getenv("TMPSTOR", "./tmpstor")
 
@@ -60,6 +61,7 @@ try:
     while True:
         for p in procs:
             if not p.is_alive():
+                logger.critical("%s died." % str(p))
                 break
         else:
             time.sleep(1)

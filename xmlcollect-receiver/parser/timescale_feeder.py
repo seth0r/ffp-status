@@ -286,7 +286,9 @@ class TimescaleFeeder:
 
     def postprocess(self, host):
         if self.sess:
-            self.sess.commit()
-            self.sess.close()
-            self.sess = None
-            self.times = None
+            try:
+                self.sess.commit()
+            finally:
+                self.sess.close()
+                self.sess = None
+                self.times = None

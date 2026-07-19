@@ -8,8 +8,8 @@ import tsdb
 
 class LinkHist(tsdb.Stat,tsdb.Base):
     remotenodeid: Mapped[str] = mapped_column( String(12), ForeignKey("nodes.nodeid", ondelete="CASCADE"), primary_key=True )
-    mac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
-    remotemac: Mapped[str] = mapped_column( String(17), ForeignKey("macaddrs.mac", ondelete="CASCADE"), primary_key=True )
+    mac: Mapped[str] = mapped_column( String(17), primary_key=True )
+    remotemac: Mapped[str] = mapped_column( String(17), primary_key=True )
 
     tq:       Mapped[int] = mapped_column( SmallInteger )
     lastseen: Mapped[float] = mapped_column( REAL )

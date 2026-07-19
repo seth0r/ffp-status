@@ -23,7 +23,7 @@ class defdict(defaultdict):
         return res
 
 class Parser( Process, parser.ffgParser, parser.TimescaleFeeder ):
-    BATCHSIZE = 1000        # split into smaller batches of this many files
+    BATCHSIZE = 100         # split into smaller batches of this many files
     MAXAGE = 35*24*60*60    # max age of files to parse
     HISTAGE = 30*24*60*60   # age of a file when it is considered historical and the above limit is ignored
 
